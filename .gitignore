@@ -1,0 +1,36 @@
+# .gitignore
+
+# Nix build results
+result
+result-*
+.drv
+
+# Secrets
+secrets/*.env
+!secrets/template.env
+!secrets/template.nix
+.env
+.envrc
+.company-secrets
+
+# Local user overrides (gitignored)
+local/
+!local/.gitkeep
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# User-specific files (these should be templated)
+modules/software.nix.bak
+*.tmp
+
+# Flake lock (optional - you may want to commit this)
+# flake.lock
+
