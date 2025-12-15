@@ -16,7 +16,6 @@ secrets/*.env
 # Local user overrides (gitignored)
 local/
 !local/.gitkeep
-local.nix
 
 # macOS
 .DS_Store

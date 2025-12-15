@@ -1,12 +1,15 @@
 # local.nix.template - Machine-specific configuration template
 #
-# Copy this file to local.nix and adjust the values for your machine:
-#   cp local.nix.template local.nix
-#
-# Or run setup.sh to generate it automatically:
+# Run setup.sh to generate local.nix automatically:
 #   ./setup.sh
 #
-# This file is gitignored to keep machine-specific settings local.
+# Or manually create and stage it:
+#   cp local.nix.template local.nix
+#   git add local.nix
+#   git update-index --skip-worktree local.nix
+#
+# The file must be staged in git for flakes to see it.
+# --skip-worktree prevents local changes from showing in git status.
 
 {
   # System architecture
