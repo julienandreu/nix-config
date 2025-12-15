@@ -345,75 +345,55 @@ apply_personal_config() {
 # Post-Install Setup
 # =============================================================================
 
-setup_github_cli() {
-    log_section "GitHub CLI"
-
-    if ! command -v gh &>/dev/null; then
-        log_warning "GitHub CLI not available yet - run 'gh auth login' after restart"
-        return 0
-    fi
-
-    if gh auth status &>/dev/null; then
-        log_success "GitHub CLI already authenticated"
-        return 0
-    fi
-
-    log_info "Authenticating with GitHub..."
-    log_step "Choose: GitHub.com → HTTPS → Login with a web browser"
-    gh auth login
-}
-
-setup_aws_cli() {
-    log_section "AWS CLI"
-
-    if ! command -v aws &>/dev/null; then
-        log_warning "AWS CLI not available yet - run 'aws configure sso' after restart"
-        return 0
-    fi
-
-    if [[ -f "$HOME/.aws/config" ]]; then
-        log_success "AWS CLI already configured"
-        return 0
-    fi
-
-    log_info "AWS SSO configuration available"
-    read -rp "   Configure AWS now? (y/N): " configure_aws
-    if [[ "$configure_aws" =~ ^[Yy]$ ]]; then
-        aws configure sso
-    else
-        log_step "Run 'aws configure sso' later to set up AWS access"
-    fi
-}
-
 show_final_steps() {
-    log_header "Setup Complete"
+    log_header "System Installation Complete"
 
     echo ""
-    log_info "Final steps to complete your setup:"
+    log_success "Nix-darwin system has been installed and configured!"
     echo ""
 
-    echo -e "   ${BOLD}1. Sign in to applications${RESET}"
-    log_step "Cursor: Open and sign in to your account"
-    if command -v open &>/dev/null; then
-        open -a Cursor 2>/dev/null || log_step "(Cursor will be installed shortly)"
+    log_info "Next step: Run the onboarding wizard to set up your applications."
+    echo ""
+    log_step "The onboarding wizard will guide you through:"
+    log_step "  • Google Chrome (default browser + account sync)"
+    log_step "  • GitHub (web login + CLI authentication)"
+    log_step "  • SSH Key (for secure Git access)"
+    log_step "  • 1Password (password manager)"
+    log_step "  • AWS Console & CLI (cloud access)"
+    log_step "  • Cursor (AI code editor)"
+    log_step "  • Linear (project management)"
+    log_step "  • Slack (team communication)"
+    echo ""
+}
+
+run_onboarding() {
+    local onboard_script="$SCRIPT_DIR/onboard.sh"
+
+    if [[ ! -x "$onboard_script" ]]; then
+        log_warning "Onboarding script not found or not executable"
+        log_step "Run manually: ./onboard.sh"
+        return 0
     fi
 
     echo ""
-    echo -e "   ${BOLD}2. Start Docker${RESET}"
-    log_step "Open Docker Desktop and start the daemon"
-    if command -v open &>/dev/null; then
-        open -a Docker 2>/dev/null || log_step "(Docker will be installed shortly)"
+    read -rp "   Would you like to run the onboarding wizard now? (Y/n): " run_onboard
+    run_onboard="${run_onboard:-y}"
+
+    if [[ "$run_onboard" =~ ^[Yy]$ ]]; then
+        echo ""
+        log_info "Starting onboarding wizard..."
+        echo ""
+        exec "$onboard_script"
+    else
+        echo ""
+        log_info "You can run the onboarding wizard later with:"
+        log_step "./onboard.sh"
+        echo ""
+        echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo -e "${BOLD}${GREEN}  🎉 System setup complete! Run ./onboard.sh when ready${RESET}"
+        echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+        echo ""
     fi
-
-    echo ""
-    echo -e "   ${BOLD}3. Restart your terminal${RESET}"
-    log_step "Close and reopen your terminal to apply all changes"
-
-    echo ""
-    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${BOLD}${GREEN}  🎉 All done! Enjoy your new setup${RESET}"
-    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo ""
 }
 
 # =============================================================================
@@ -463,13 +443,9 @@ main() {
         apply_personal_config
     fi
 
-    # Phase 6: Post-install setup
-    log_info "GUI apps (Cursor, Slack, Linear, Docker, Karabiner) managed via nix-darwin"
-    setup_github_cli
-    setup_aws_cli
-
-    # Done
+    # Done - show summary and offer onboarding
     show_final_steps
+    run_onboarding
 }
 
 main "$@"
