@@ -3,11 +3,6 @@
 {
   system.primaryUser = username;
 
-  # ghostty is not available for macOS, only Linux
-  # environment.systemPackages = with pkgs; [
-  #   ghostty
-  # ];
-
   programs.zsh.enable = true;
 
   homebrew = {
@@ -19,6 +14,7 @@
     };
 
     casks = [
+      "ghostty"
       "google-chrome"
       "cursor"
       "slack"
