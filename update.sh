@@ -53,6 +53,35 @@ log_step() {
 # Update Functions
 # =============================================================================
 
+ensure_homebrew() {
+    # Check if Homebrew is available
+    if command -v brew &>/dev/null; then
+        return 0
+    fi
+
+    # Check common Homebrew locations
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+        return 0
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+        return 0
+    fi
+
+    # Install Homebrew if not found
+    log_info "Installing Homebrew..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+    # Add to PATH for current session
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+
+    log_success "Homebrew installed"
+}
+
 pull_latest_changes() {
     if [[ ! -d ".git" ]]; then
         log_step "Not a git repository, skipping pull"
@@ -90,6 +119,9 @@ main() {
 
     log_section "Syncing Repository"
     pull_latest_changes
+
+    log_section "Checking Prerequisites"
+    ensure_homebrew
 
     log_section "Updating Dependencies"
     update_flake_lock

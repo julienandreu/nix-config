@@ -107,6 +107,32 @@ install_nix() {
     log_success "Nix installed successfully"
 }
 
+install_homebrew() {
+    # Check if Homebrew is already installed
+    if command -v brew &>/dev/null; then
+        log_success "Homebrew is already installed"
+        return 0
+    fi
+
+    # Check common Homebrew locations for Apple Silicon and Intel Macs
+    if [[ -x "/opt/homebrew/bin/brew" ]] || [[ -x "/usr/local/bin/brew" ]]; then
+        log_success "Homebrew is already installed (not in PATH yet)"
+        return 0
+    fi
+
+    log_info "Installing Homebrew..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+    # Add Homebrew to PATH for the current session
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+
+    log_success "Homebrew installed successfully"
+}
+
 enable_flakes() {
     mkdir -p ~/.config/nix
     if grep -q "experimental-features" ~/.config/nix/nix.conf 2>/dev/null; then
@@ -405,18 +431,21 @@ main() {
     install_nix
     enable_flakes
 
-    # Phase 1.5: Generate local configuration
+    # Phase 2: Install Homebrew
+    log_section "Installing Homebrew"
+    install_homebrew
+
+    # Phase 3: Generate local configuration
     log_section "Local Configuration"
     generate_local_config
 
-    # Phase 2: Build and activate system
+    # Phase 4: Build and activate system
     log_section "Building System"
     build_system
     activate_system
 
-    # Phase 3: Personal configuration
+    # Phase 5: Personal configuration
     mkdir -p "$SECRETS_DIR"
-
     if [[ -f "$SECRETS_DIR/secrets.nix" ]]; then
         log_section "Personal Configuration"
         log_success "Personal configuration already exists"
@@ -430,7 +459,7 @@ main() {
         apply_personal_config
     fi
 
-    # Phase 4: Post-install setup
+    # Phase 6: Post-install setup
     log_info "GUI apps (Cursor, Slack, Linear, Docker, Karabiner) managed via nix-darwin"
     setup_github_cli
     setup_aws_cli
