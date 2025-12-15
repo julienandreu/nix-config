@@ -1,6 +1,6 @@
-# Company Engineering Workstation Setup
+# Personal Nix Configuration
 
-This repository contains the Nix configuration for setting up engineering workstations. It provides a reproducible, version-controlled development environment that can be set up in minutes.
+This repository contains my personal Nix configuration for macOS development environments. It provides a reproducible, version-controlled development environment that can be set up in minutes.
 
 ## 🎯 What This Does
 
@@ -16,77 +16,69 @@ This configuration automatically sets up:
 
 ## 📋 Prerequisites
 
-Before running the setup, ensure you have:
+- macOS (Apple Silicon or Intel)
+- Admin access to your machine
+- GitHub account
 
-- ✅ macOS (Apple Silicon or Intel)
-- ✅ Admin access to your machine
-- ✅ Company Google account (for SSO apps)
-- ✅ Company AWS account (IAM user or SSO)
-- ✅ Company GitHub account (organization access)
+## 🚀 Quick Start
 
-## 🚀 Quick Start (For New Hires)
+### One-Line Install
 
-### Step 1: Get Your Accounts
-
-Make sure you have received:
-- [ ] Google account (email@company.com)
-- [ ] GitHub organization invite
-- [ ] AWS IAM user credentials or SSO access
-
-### Step 2: Run Setup
-
-Clone this repository and run the setup script:
+Run this command in your terminal:
 
 ```bash
-git clone git@github.com:yourcompany/nix-config.git ~/.config/nix-config
-cd ~/.config/nix-config
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/julienandreu/nix-config/main/install.sh)"
+```
+
+Or with wget:
+
+```bash
+/bin/bash -c "$(wget -qO- https://raw.githubusercontent.com/julienandreu/nix-config/main/install.sh)"
+```
+
+This will:
+
+1. Install Xcode Command Line Tools (if needed)
+2. Clone the repository to `~/.nix-config`
+3. Install Nix and enable flakes
+4. Build and activate the system configuration
+5. Guide you through personal setup (Git, SSH keys, etc.)
+
+### Alternative: Manual Installation
+
+If you prefer to clone manually:
+
+```bash
+git clone https://github.com/julienandreu/nix-config.git ~/.nix-config
+cd ~/.nix-config
 ./setup.sh
 ```
 
-Or if you prefer a one-liner:
+### Custom Install Location
+
+You can specify a custom install directory:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/yourcompany/nix-config/main/setup.sh)
+NIX_CONFIG_DIR=~/my-config /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/julienandreu/nix-config/main/install.sh)"
 ```
 
-The setup script will:
-1. Install Nix (if not already installed)
-2. Bootstrap nix-darwin
-3. Install all packages and tools
-4. **Interactively prompt you for:**
-   - Your name and email (for Git)
-   - Your Google account (for SSO apps)
-   - Generate SSH key for GitHub
-   - Configure AWS (optional)
-5. Automatically create your personal configuration file
-6. Open applications and guide you through final setup steps
+## 📝 What the Setup Does
 
-### Step 3: Complete Setup
+The setup script will interactively guide you through:
 
-The setup script will interactively prompt you for:
-- **Your name and email** (for Git configuration)
-- **Your Google account** (for SSO applications)
-- **SSH key generation** (automatically generates and helps you add it to GitHub)
-- **AWS configuration** (optional, can be done later)
+1. **Nix Installation** - Installs Nix package manager and enables flakes
+2. **System Configuration** - Builds and activates nix-darwin
+3. **Git Setup** - Prompts for your name and email
+4. **SSH Key Generation** - Creates an ED25519 key for GitHub and helps you add it
+5. **Optional Integrations** - GitHub CLI and AWS CLI configuration
 
-The script will:
-- ✅ Generate an SSH key automatically
-- ✅ Open GitHub in your browser to add the SSH key
-- ✅ Create your personal configuration file automatically
-- ✅ Guide you through signing into applications
+After setup, some applications require manual sign-in:
 
-### Step 4: Complete Manual Steps
+- **Cursor**: Open and sign in
+- **Docker**: Open Docker Desktop and start the daemon
+- **Slack/Linear**: Sign in to your workspaces
 
-Some applications require manual sign-in:
-
-1. **GitHub**: Run `gh auth login` (or follow the prompt during setup)
-2. **AWS**: Run `aws configure sso` (or `aws configure` for IAM)
-3. **Cursor**: Open and sign in with Google SSO
-4. **Linear**: Open and sign in with Google SSO
-5. **Slack**: Open and sign in with Google SSO
-6. **Docker**: Open Docker Desktop and start the daemon
-
-### Step 5: Verify Installation
+## ✅ Verify Installation
 
 ```bash
 # Check that key tools are installed
@@ -108,7 +100,8 @@ starship --version
 nix-config/
 ├── flake.nix              # Main Nix flake entry point
 ├── home.nix               # Home Manager configuration
-├── setup.sh               # Initial setup script
+├── install.sh             # One-line bootstrap installer
+├── setup.sh               # Full setup script
 ├── update.sh              # Update script
 ├── machines/
 │   └── default.nix        # nix-darwin system configuration
@@ -118,44 +111,39 @@ nix-config/
 │   ├── tools.nix          # CLI utilities
 │   └── theme.nix          # Visual theming
 ├── configs/
-│   ├── starship/          # Starship prompt config
-│   ├── nvim/              # Neovim configuration
-│   ├── ghostty/           # Ghostty terminal config
-│   ├── karabiner/         # Karabiner Elements config
-│   └── git/               # Git configuration
+│   └── nvim/              # Neovim configuration
 └── secrets/
-    └── template.env       # Secrets template
+    ├── template.env       # Environment secrets template
+    └── template.nix       # Nix secrets template
 ```
 
 ## 🔄 Daily Usage
 
 ### Updating Your Configuration
 
-When the team adds new tools or updates configurations:
+When you want to update packages and pull latest changes:
 
 ```bash
-cd ~/.config/nix-config
+cd ~/.nix-config
 ./update.sh
 ```
 
 This will:
+
 - Pull latest changes from the repository
-- Update all Nix packages
+- Update the flake lock file
 - Rebuild your configuration
-- Update Homebrew apps
 
 ### Adding New Software
 
-To add new software to the team configuration:
+To add new software to your configuration:
 
 1. Edit the appropriate module file in `modules/`
-2. Commit and push your changes
-3. Create a PR for review
-4. After merge, team members run `./update.sh`
+2. Rebuild: `darwin-rebuild switch --flake .#mac`
 
 ### Customizing Your Setup
 
-Personal customizations should go in `~/.config/local/` to avoid conflicts with company config. The configuration will automatically use your existing configs if they exist in `~/.config/`.
+Personal customizations go in `~/.config/nix-config/local/`. See [CUSTOMIZATION.md](CUSTOMIZATION.md) for details.
 
 ## 🛠️ Troubleshooting
 
@@ -166,43 +154,38 @@ Personal customizations should go in `~/.config/local/` to avoid conflicts with 
 nix-collect-garbage -d
 
 # Rebuild
-cd ~/.config/nix-config
-darwin-rebuild switch --flake .#macbook
+darwin-rebuild switch --flake ~/.nix-config#mac
 ```
 
 ### Application not found after install
 
-Make sure your shell has been restarted or source your profile:
+Restart your terminal or source your profile:
 
 ```bash
 source ~/.zshrc
-# Or restart your terminal
-```
-
-### Homebrew cask installation fails
-
-```bash
-# Update Homebrew
-brew update
-
-# Try installing manually
-brew install --cask <app-name>
 ```
 
 ### Git configuration not applied
 
-Check that your secrets file is properly sourced:
+Check that your secrets file exists and rebuild:
 
 ```bash
-source ~/.company-secrets
-# Then rebuild
-darwin-rebuild switch --flake ~/.config/nix-config#macbook
+ls ~/.config/nix-config/local/secrets.nix
+darwin-rebuild switch --flake ~/.nix-config#mac
+```
+
+### SSH key not working
+
+Test your GitHub SSH connection:
+
+```bash
+ssh -T git@github.com
 ```
 
 ## 🔐 Security Notes
 
-- Never commit `~/.company-secrets` or any files with real credentials
-- The `secrets/template.env` file is safe to commit (it's just a template)
+- Never commit `~/.config/nix-config/local/secrets.nix` or files with real credentials
+- The `secrets/template.*` files are safe to commit (they're just templates)
 - AWS credentials are stored in `~/.aws/` (not managed by Nix)
 - GitHub tokens are managed by `gh auth` (stored securely by GitHub CLI)
 
@@ -214,17 +197,10 @@ darwin-rebuild switch --flake ~/.config/nix-config#macbook
 - [Zero to Nix](https://zero-to-nix.com/)
 - [Catppuccin Theme](https://github.com/catppuccin/catppuccin)
 
-## 🤝 Contributing
+## 📝 License
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to improve this setup.
-
-## 📞 Support
-
-- **Slack**: #engineering-setup
-- **Issues**: Create an issue in this repository
-- **Documentation**: [Confluence link]
+This configuration is provided as-is for personal use. Feel free to fork and adapt it to your needs.
 
 ---
 
 **Note**: This configuration is designed for macOS. Linux support can be added by creating additional machine configurations.
-

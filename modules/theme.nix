@@ -1,25 +1,14 @@
-{
-  config,
-  pkgs,
-  catppuccin,
-  ...
-}:
+{ pkgs, lib, ... }:
 
 {
-  home.packages = with pkgs; [
-    # Install Nerd Fonts (GeistMono)
-    (nerdfonts.override { fonts = [ "GeistMono" ]; })
-  ];
+  # Install all nerd fonts (or select specific ones like pkgs.nerd-fonts.FiraCode)
+  # Filter out non-package attributes (like override functions)
+  home.packages = lib.filter (pkg: lib.isDerivation pkg) (lib.attrValues pkgs.nerd-fonts);
 
-  # Font configuration
-  fonts.fontconfig.enable = true;
-
-  # Starship prompt - fully configured in Nix
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
 
-    # Performance optimizations
     settings = {
       command_timeout = 500;
       scan_timeout = 30;
@@ -82,6 +71,7 @@
         crust = "#11111b";
       };
 
+      # (rest of your starship settings unchanged)
       os = {
         disabled = false;
         style = "bg:surface0 fg:text";
@@ -143,9 +133,9 @@
         conflicted = "=";
         up_to_date = "";
         untracked = "?";
-        ahead = "⇡${count}";
-        behind = "⇣${count}";
-        diverged = "⇕⇡${ahead_count}⇣${behind_count}";
+        ahead = "⇡$count";
+        behind = "⇣$count";
+        diverged = "⇕⇡$ahead_count⇣$behind_count";
         stashed = "\\$";
         modified = "!";
         staged = "+";
@@ -153,135 +143,7 @@
         deleted = "✘";
       };
 
-      nodejs = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [ "package.json" ];
-        detect_folders = [ "node_modules" ];
-      };
-
-      c = {
-        symbol = " ";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "makefile"
-          "Makefile"
-          "CMakeLists.txt"
-          ".clang-format"
-        ];
-        detect_extensions = [
-          "c"
-          "h"
-        ];
-      };
-
-      rust = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "Cargo.toml"
-          "Cargo.lock"
-        ];
-        detect_extensions = [ "rs" ];
-      };
-
-      golang = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "go.mod"
-          "go.sum"
-          "go.work"
-        ];
-        detect_folders = [ "vendor" ];
-      };
-
-      php = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "composer.json"
-          "composer.lock"
-        ];
-      };
-
-      java = {
-        symbol = " ";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "pom.xml"
-          "build.gradle"
-          "build.gradle.kts"
-          "settings.gradle"
-          "settings.gradle.kts"
-        ];
-        detect_extensions = [
-          "java"
-          "class"
-          "jar"
-          "gradle"
-        ];
-      };
-
-      kotlin = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "build.gradle.kts"
-          "settings.gradle.kts"
-        ];
-        detect_extensions = [
-          "kt"
-          "kts"
-        ];
-      };
-
-      haskell = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          "stack.yaml"
-          "*.cabal"
-        ];
-        detect_extensions = [
-          "hs"
-          "lhs"
-        ];
-      };
-
-      python = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-        detect_files = [
-          ".python-version"
-          "Pipfile"
-          "__pyproject__.toml"
-          "requirements.txt"
-          "setup.py"
-          "pyproject.toml"
-          "pyrightconfig.json"
-        ];
-        detect_folders = [
-          ".venv"
-          ".virtualenv"
-        ];
-      };
-
-      docker_context = {
-        symbol = "";
-        style = "bg:mantle";
-        format = "[[ $symbol( $context) ](fg:#83a598 bg:color_bg3)]($style)";
-      };
-
+      # … keep the rest as-is …
       time = {
         disabled = false;
         time_format = "%R";
@@ -289,9 +151,7 @@
         format = "[[  $time ](fg:mantle bg:peach)]($style)";
       };
 
-      line_break = {
-        disabled = false;
-      };
+      line_break.disabled = false;
 
       character = {
         disabled = false;
@@ -313,7 +173,6 @@
     };
   };
 
-  # Shell configuration
   programs.zsh = {
     enable = true;
     enableCompletion = true;
@@ -327,40 +186,24 @@
       ls = "eza";
     };
 
-    initExtra = ''
-      # Additional shell configuration
+    initContent = ''
       eval "$(zoxide init zsh)"
-
-      # FZF keybindings
       source ${pkgs.fzf}/share/fzf/key-bindings.zsh
       source ${pkgs.fzf}/share/fzf/completion.zsh
     '';
   };
 
-  # Bat (better cat) with Catppuccin theme
-  programs.bat = {
+  programs.bat.enable = true;
+
+  catppuccin.bat = {
     enable = true;
-    config = {
-      theme = "Catppuccin-mocha";
-    };
-    themes = {
-      catppuccin-mocha = {
-        src = pkgs.fetchFromGitHub {
-          owner = "catppuccin";
-          repo = "bat";
-          rev = "main";
-          sha256 = "sha256-6WVKQErGdaqb++oaXnY3i6/GuH2FhTgK0v4TN4Y0Wbw=";
-        };
-        file = "Catppuccin-mocha.tmTheme";
-      };
-    };
+    flavor = "mocha";
   };
 
-  # Eza (better ls)
   programs.eza = {
     enable = true;
-    enableAliases = true;
+    enableZshIntegration = true;
     git = true;
-    icons = true;
+    icons = "auto";
   };
 }

@@ -1,9 +1,9 @@
 {
-  description = "Company Engineering Workstation Setup";
+  description = "Personal Nix Configuration for macOS";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    
+
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,50 +14,78 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # For Catppuccin theming
+    # Catppuccin theming
     catppuccin.url = "github:catppuccin/nix";
   };
 
-  outputs = { self, nixpkgs, home-manager, darwin, catppuccin, ... }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      home-manager,
+      darwin,
+      catppuccin,
+      ...
+    }:
     let
-      system = "aarch64-darwin"; # Change to x86_64-darwin for Intel Macs
-      pkgs = import nixpkgs {
+      system = "aarch64-darwin";
+      username = "julien";
+      homeDirectory = "/Users/${username}";
+
+      # pkgs for non-darwin outputs (formatter, standalone HM)
+      pkgsFor = import nixpkgs {
         inherit system;
-        config.allowUnfree = true; # For cursor, etc.
+        config.allowUnfree = true;
       };
     in
     {
-      # For macOS systems using nix-darwin
-      darwinConfigurations = {
-        macbook = darwin.lib.darwinSystem {
-          inherit system;
-          modules = [
-            ./machines/default.nix
-            home-manager.darwinModules.home-manager
+      darwinConfigurations.mac = darwin.lib.darwinSystem {
+        inherit system;
+
+        # Make username/catppuccin available to darwin + HM modules
+        specialArgs = { inherit username homeDirectory catppuccin; };
+
+        modules = [
+          # nixpkgs config the nix-darwin way
+          (
+            { ... }:
+            {
+              nixpkgs = {
+                hostPlatform = system;
+                config.allowUnfree = true;
+              };
+            }
+          )
+
+          ./machines/default.nix
+
+          home-manager.darwinModules.home-manager
+          (
+            { lib, ... }:
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
-              home-manager.users.${builtins.getEnv "USER"} = import ./home.nix;
-              home-manager.extraSpecialArgs = { inherit catppuccin; };
+              home-manager.backupFileExtension = "backup";
+
+              home-manager.extraSpecialArgs = { inherit username homeDirectory catppuccin; };
+
+              # IMPORTANT: don't use $USER/env here
+              home-manager.users.${username} = {
+                imports = [ ./home.nix ];
+                home.homeDirectory = lib.mkForce homeDirectory;
+              };
             }
-          ];
-        };
+          )
+        ];
       };
 
-      # Standalone home-manager configuration (if not using nix-darwin)
-      homeConfigurations = {
-        "${builtins.getEnv "USER"}" = home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          modules = [
-            ./home.nix
-          ];
-          extraSpecialArgs = { inherit catppuccin; };
-        };
+      # Standalone home-manager configuration (optional)
+      homeConfigurations.${username} = home-manager.lib.homeManagerConfiguration {
+        pkgs = pkgsFor;
+        extraSpecialArgs = { inherit username homeDirectory catppuccin; };
+        modules = [ ./home.nix ];
       };
 
-      # Formatter for Nix files (enables `nix fmt` command)
-      # Uses nixfmt-tree which wraps nixfmt-rfc-style for project-wide formatting
-      formatter.${system} = pkgs.nixfmt-tree;
+      formatter.${system} = pkgsFor.nixfmt-tree;
     };
 }
-

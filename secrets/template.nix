@@ -11,11 +11,10 @@
   # Override git configuration with your personal details
   programs.git = {
     userName = "Your Name";
-    userEmail = "your.email@company.com";
+    userEmail = "your.email@example.com";
   };
-  
+
   # You can add other personal overrides here
   # For example:
   # home.packages = with pkgs; [ your-personal-tools ];
 }
-

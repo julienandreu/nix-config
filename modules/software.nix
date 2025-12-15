@@ -1,58 +1,44 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   home.packages = with pkgs; [
-    # Terminal
-    ghostty
-
     # Development tools
     docker-compose
-
-    # GUI Applications (Cursor, Slack, Linear, Docker, Karabiner)
-    # are managed via nix-darwin's homebrew module in machines/default.nix
   ];
 
   # Git configuration
-  # User-specific values should be set in ~/.config/nix-config/local/secrets.nix
-  # This file is automatically imported if it exists (see home.nix)
+  # User-specific values should be set in:
+  #   ~/.config/nix-config/local/secrets.nix
   programs.git = {
     enable = true;
-    # Default values - will be overridden by local/secrets.nix if it exists
-    # Users should create ~/.config/nix-config/local/secrets.nix from secrets/template.nix
-    userName = ""; # Set in local/secrets.nix
-    userEmail = ""; # Set in local/secrets.nix
 
-    extraConfig = {
+    # Don't set empty values by default—let secrets.nix define these.
+    # userName = "...";
+    # userEmail = "...";
+
+    settings = {
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
       core.editor = "nvim";
 
-      # Performance optimizations for faster git operations
-      # Enable filesystem monitor for faster status (macOS)
       core.fsmonitor = true;
-      # Use more efficient diff algorithm
       diff.algorithm = "histogram";
-      # Faster status with untracked files
       status.showUntrackedFiles = "normal";
-      # Use faster index format
       index.version = 4;
-      # Optimize for large repos
       feature.manyFiles = true;
-      # Faster log operations
       log.decorate = "short";
-    };
 
-    aliases = {
-      st = "status";
-      co = "checkout";
-      br = "branch";
-      ci = "commit";
-      lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
+      aliases = {
+        st = "status";
+        co = "checkout";
+        br = "branch";
+        ci = "commit";
+        lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
+      };
     };
   };
 
-  # GitHub CLI
   programs.gh = {
     enable = true;
     settings = {
@@ -61,36 +47,28 @@
     };
   };
 
-  # AWS CLI
   programs.awscli = {
     enable = true;
-    # Credentials will be configured separately per user via aws configure
   };
 
   # Ghostty configuration - inlined in Nix
-  home.file.".config/ghostty/config".text = ''
+  xdg.configFile."ghostty/config".text = ''
     # Ghostty Configuration with Catppuccin Mocha Theme
 
-    # Theme
     theme = catppuccin-mocha
 
-    # Font
     font-family = GeistMono Nerd Font Mono
     font-size = 14
 
-    # Window
     window-padding-x = 10
     window-padding-y = 10
     window-theme = dark
 
-    # Cursor
     cursor-style = block
     cursor-style-blink = true
 
-    # Shell
     shell-integration = zsh
 
-    # Colors (Catppuccin Mocha)
     background = "#1e1e2e"
     foreground = "#cdd6f4"
     cursor = "#f5e0dc"

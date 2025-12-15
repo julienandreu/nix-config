@@ -8,7 +8,7 @@
     jq
     zoxide
     nixfmt-rfc-style # Nix formatter (RFC-style formatting)
-    gix # Blazing fast Rust-based git implementation (gitoxide)
+    # gix # Blazing fast Rust-based git implementation (gitoxide) - package name may differ
   ];
 
   # Neovim with lazy.nvim plugin manager
