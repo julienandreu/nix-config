@@ -13,6 +13,10 @@
       upgrade = true;
     };
 
+    taps = [
+      "oneleet/tap"
+    ];
+
     casks = [
       "1password"
       "cursor"
@@ -21,6 +25,7 @@
       "google-chrome"
       "karabiner-elements"
       "linear-linear"
+      "oneleet-agent"
       "slack"
     ];
   };
