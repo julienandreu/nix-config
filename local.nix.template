@@ -1,0 +1,22 @@
+# local.nix.template - Machine-specific configuration template
+#
+# Copy this file to local.nix and adjust the values for your machine:
+#   cp local.nix.template local.nix
+#
+# Or run setup.sh to generate it automatically:
+#   ./setup.sh
+#
+# This file is gitignored to keep machine-specific settings local.
+
+{
+  # System architecture
+  # "aarch64-darwin" for Apple Silicon Macs (M1, M2, M3, etc.)
+  # "x86_64-darwin" for Intel Macs
+  system = "aarch64-darwin";
+
+  # Your macOS username (run: echo $USER)
+  username = "your-username";
+
+  # Your home directory (run: echo $HOME)
+  homeDirectory = "/Users/your-username";
+}
