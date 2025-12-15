@@ -57,7 +57,7 @@
 
     theme = catppuccin-mocha
 
-    font-family = GeistMono Nerd Font Mono
+    font-family = MesloLGL Nerd Font Mono
     font-size = 14
 
     window-padding-x = 10
@@ -90,4 +90,13 @@
     color14 = "#94e2d5"
     color15 = "#a6adc8"
   '';
+
+  # Cursor Editor configuration - inlined in Nix
+  # Cursor uses VS Code's settings.json format
+  home.file.".config/Cursor/User/settings.json".text = builtins.toJSON {
+    "editor.fontFamily" =
+      "MesloLGL Nerd Font Mono, 'MesloLGL NF', 'Meslo LG L', Menlo, Monaco, 'Courier New', monospace";
+    "editor.fontSize" = 14;
+    "editor.fontLigatures" = false;
+  };
 }

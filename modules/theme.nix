@@ -1,9 +1,13 @@
 { pkgs, lib, ... }:
 
 {
-  # Install all nerd fonts (or select specific ones like pkgs.nerd-fonts.FiraCode)
-  # Filter out non-package attributes (like override functions)
-  home.packages = lib.filter (pkg: lib.isDerivation pkg) (lib.attrValues pkgs.nerd-fonts);
+  # Install nerd fonts
+  # On macOS, home-manager installs fonts to ~/Library/Fonts/
+  home.packages = with pkgs; [
+    nerd-fonts.meslo-lg  # Primary font used in Ghostty and Cursor config
+    # Uncomment to install all nerd fonts (slower but more flexible):
+    # ] ++ lib.filter (pkg: lib.isDerivation pkg) (lib.attrValues nerd-fonts);
+  ];
 
   programs.starship = {
     enable = true;
@@ -13,32 +17,32 @@
       command_timeout = 500;
       scan_timeout = 30;
 
-      format = "
-[ ](surface0)\
-$os\
-$username\
-[](bg:surface0 fg:base)\
-$directory\
-[](fg:base bg:green)\
-$git_branch\
-$git_status\
-[](fg:green bg:teal)\
-$c\
-$rust\
-$golang\
-$nodejs\
-$php\
-$java\
-$kotlin\
-$haskell\
-$python\
-[](fg:teal bg:peach)\
-$time\
-[](fg:peach bg:crust)\
-$cmd_duration\
-[](fg:crust)\
-$line_break$character
-      ";
+      format = ''
+        [ ](surface0)\
+        $os\
+        $username\
+        [](bg:surface0 fg:base)\
+        $directory\
+        [](fg:base bg:green)\
+        $git_branch\
+        $git_status\
+        [](fg:green bg:teal)\
+        $c\
+        $rust\
+        $golang\
+        $nodejs\
+        $php\
+        $java\
+        $kotlin\
+        $haskell\
+        $python\
+        [](fg:teal bg:peach)\
+        $time\
+        [](fg:peach bg:crust)\
+        $cmd_duration\
+        [](fg:crust)\
+        $line_break$character
+      '';
 
       palette = "catppuccin_mocha";
 
@@ -76,25 +80,25 @@ $line_break$character
         disabled = false;
         style = "bg:surface0 fg:text";
         symbols = {
-          Windows = "";
-          Ubuntu = "";
-          SUSE = "";
-          Raspbian = "";
-          Mint = "";
-          Macos = "";
-          Manjaro = "";
-          Linux = "";
-          Gentoo = "";
-          Fedora = "";
-          Alpine = "";
-          Amazon = "";
-          Android = "";
-          Arch = "";
-          Artix = "";
-          CentOS = "";
-          Debian = "";
-          Redhat = "";
-          RedHatEnterprise = "";
+          Windows = "󰍲";
+          Ubuntu = "󰕈";
+          SUSE = "";
+          Raspbian = "󰐿";
+          Mint = "󰣭";
+          Macos = "󰀵";
+          Manjaro = "";
+          Linux = "󰌽";
+          Gentoo = "󰣨";
+          Fedora = "󰣛";
+          Alpine = "";
+          Amazon = "";
+          Android = "";
+          Arch = "󰣇";
+          Artix = "󰣇";
+          CentOS = "";
+          Debian = "󰣚";
+          Redhat = "󱄛";
+          RedHatEnterprise = "󱄛";
         };
       };
 
@@ -111,56 +115,104 @@ $line_break$character
         truncation_length = 3;
         truncation_symbol = "…/";
         substitutions = {
-          Documents = " ";
-          Downloads = " ";
-          Music = " ";
-          Pictures = " ";
-          Developer = " ";
+          Documents = "󰈙 ";
+          Downloads = " ";
+          Music = "󰝚 ";
+          Pictures = " ";
+          Developer = "󰲋 ";
         };
       };
 
       git_branch = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol $branch ](fg:base bg:green)]($style)";
-        only_attached = false;
       };
 
       git_status = {
         style = "bg:teal";
         format = "[[($all_status$ahead_behind )](fg:base bg:green)]($style)";
-        disabled = false;
-        conflicted = "=";
-        up_to_date = "";
-        untracked = "?";
-        ahead = "⇡$count";
-        behind = "⇣$count";
-        diverged = "⇕⇡$ahead_count⇣$behind_count";
-        stashed = "\\$";
-        modified = "!";
-        staged = "+";
-        renamed = "»";
-        deleted = "✘";
       };
 
-      # … keep the rest as-is …
+      nodejs = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      c = {
+        symbol = " ";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      rust = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      golang = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      php = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      java = {
+        symbol = " ";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      kotlin = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      haskell = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      python = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+      };
+
+      docker_context = {
+        symbol = "";
+        style = "bg:mantle";
+        format = "[[ $symbol( $context) ](fg:#83a598 bg:color_bg3)]($style)";
+      };
+
       time = {
         disabled = false;
         time_format = "%R";
         style = "bg:peach";
-        format = "[[  $time ](fg:mantle bg:peach)]($style)";
+        format = "[[  $time ](fg:mantle bg:peach)]($style)";
       };
 
-      line_break.disabled = false;
+      line_break = {
+        disabled = false;
+      };
 
       character = {
         disabled = false;
-        success_symbol = "[](bold fg:green)";
-        error_symbol = "[](bold fg:red)";
-        vimcmd_symbol = "[](bold fg:green)";
-        vimcmd_replace_one_symbol = "[](bold fg:purple)";
-        vimcmd_replace_symbol = "[](bold fg:purple)";
-        vimcmd_visual_symbol = "[](bold fg:lavender)";
+        success_symbol = "[](bold fg:green)";
+        error_symbol = "[](bold fg:red)";
+        vimcmd_symbol = "[](bold fg:creen)";
+        vimcmd_replace_one_symbol = "[](bold fg:purple)";
+        vimcmd_replace_symbol = "[](bold fg:purple)";
+        vimcmd_visual_symbol = "[](bold fg:lavender)";
       };
 
       cmd_duration = {
@@ -168,7 +220,7 @@ $line_break$character
         min_time = 0;
         show_milliseconds = false;
         style = "bg:crust";
-        format = "[[  $duration ](fg:overlay0 bg:crust)]($style)";
+        format = "[[  $duration ](fg:overlay0 bg:crust)]($style)";
       };
     };
   };
