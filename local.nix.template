@@ -3,13 +3,10 @@
 # Run setup.sh to generate local.nix automatically:
 #   ./setup.sh
 #
-# Or manually create and stage it:
+# Or manually copy and edit:
 #   cp local.nix.template local.nix
-#   git add local.nix
-#   git update-index --skip-worktree local.nix
 #
-# The file must be staged in git for flakes to see it.
-# --skip-worktree prevents local changes from showing in git status.
+# This file is gitignored. Build commands require --impure flag.
 
 {
   # System architecture

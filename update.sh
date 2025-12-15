@@ -75,7 +75,7 @@ update_flake_lock() {
 
 rebuild_system() {
     log_info "Rebuilding configuration (requires sudo)..."
-    sudo darwin-rebuild switch --flake "$FLAKE"
+    sudo darwin-rebuild switch --flake "$FLAKE" --impure
     log_success "System rebuilt and activated"
 }
 

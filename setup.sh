@@ -152,24 +152,18 @@ generate_local_config() {
 }
 EOF
 
-    # Stage the file so it's visible to flakes (pure mode)
-    # Use --skip-worktree to ignore local changes
-    git -C "$SCRIPT_DIR" add "$local_nix"
-    git -C "$SCRIPT_DIR" update-index --skip-worktree "$local_nix"
-
     log_success "Generated local.nix (system=$system, user=$USER)"
-    log_step "File is staged in git but local changes are ignored"
 }
 
 build_system() {
     log_info "Building system as $(whoami)..."
-    nix build "$SCRIPT_DIR#darwinConfigurations.mac.system"
+    nix build "$SCRIPT_DIR#darwinConfigurations.mac.system" --impure
     log_success "System built successfully"
 }
 
 activate_system() {
     log_info "Activating system (requires sudo)..."
-    sudo "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE"
+    sudo "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure
     log_success "System activated"
 }
 
@@ -323,7 +317,7 @@ EOF
 
 apply_personal_config() {
     log_info "Applying configuration with your personal settings..."
-    darwin-rebuild switch --flake "$SCRIPT_DIR#mac"
+    darwin-rebuild switch --flake "$SCRIPT_DIR#mac" --impure
     log_success "Personal configuration applied"
 }
 
@@ -433,7 +427,7 @@ main() {
         log_section "Personal Configuration"
         log_success "Personal configuration already exists"
         log_step "Edit $SECRETS_DIR/secrets.nix to update"
-        log_step "Run: darwin-rebuild switch --flake .#mac"
+        log_step "Run: darwin-rebuild switch --flake .#mac --impure"
     else
         log_header "📝 Personal Configuration"
         setup_git_config
