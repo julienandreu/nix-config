@@ -107,13 +107,13 @@ setup_chrome() {
     log_action "Setting Chrome as default browser..."
     if [[ -d "/Applications/Google Chrome.app" ]]; then
         # Open Chrome first to ensure it's registered as a browser
-        open -a "Google Chrome" --args --make-default-browser 2>/dev/null || true
+        open -a "Google Chrome" "chrome://settings/people" --args --make-default-browser 2>/dev/null || true
         sleep 2
         log_success "Chrome opened and set as default browser candidate"
     else
         log_warning "Google Chrome not found. It may still be installing."
         wait_for_user "Press Enter after Chrome is installed..."
-        open -a "Google Chrome" --args --make-default-browser 2>/dev/null || true
+        open -a "Google Chrome" "chrome://settings/people" --args --make-default-browser 2>/dev/null || true
     fi
 
     echo ""
@@ -428,6 +428,7 @@ setup_aws_cli() {
     log_step_header "6" "AWS CLI - Command Line Configuration"
 
     log_info "The AWS CLI allows you to interact with AWS from the terminal."
+    log_info "You'll configure it using credentials from 1Password."
     echo ""
 
     if ! command -v aws &>/dev/null; then
@@ -436,32 +437,46 @@ setup_aws_cli() {
     fi
 
     # Check if already configured
-    if [[ -f "$HOME/.aws/config" ]] && grep -q "\[profile" "$HOME/.aws/config"; then
-        log_success "AWS CLI is already configured"
-        log_info "Existing profiles:"
-        grep "^\[profile" "$HOME/.aws/config" | sed 's/\[profile /   → /' | sed 's/\]//'
+    if [[ -f "$HOME/.aws/credentials" ]] && grep -q "aws_access_key_id" "$HOME/.aws/credentials"; then
+        log_success "AWS CLI credentials already configured"
         echo ""
 
-        if ! confirm_step "Would you like to add a new SSO profile?"; then
+        if ! confirm_step "Would you like to reconfigure AWS credentials?"; then
             log_success "Step 6 complete: AWS CLI is configured!"
             return 0
         fi
     fi
 
-    log_action "Configuring AWS CLI with SSO..."
+    echo ""
+    log_info "First, get your AWS credentials from 1Password:"
+    log_step "1. Open ${BOLD}1Password${RESET}"
+    log_step "2. Search for your AWS credentials"
+    log_step "3. Copy the ${BOLD}Access Key ID${RESET} and ${BOLD}Secret Access Key${RESET}"
+    echo ""
+
+    wait_for_user "Press Enter when you have your AWS credentials ready..."
+
+    log_action "Configuring AWS CLI..."
     echo ""
     log_info "You'll be prompted to enter:"
-    log_step "SSO session name (e.g., 'saris')"
-    log_step "SSO start URL (get this from your admin)"
-    log_step "SSO region (e.g., 'us-east-1')"
-    log_step "SSO registration scopes (press Enter for default)"
+    log_step "AWS Access Key ID (from 1Password)"
+    log_step "AWS Secret Access Key (from 1Password)"
+    log_step "Default region name (e.g., 'us-east-1' or 'eu-west-1')"
+    log_step "Default output format (press Enter for 'json')"
     echo ""
 
-    aws configure sso
+    aws configure
 
     echo ""
-    log_success "AWS CLI configured!"
-    log_info "To use AWS CLI, run: ${BOLD}aws sso login${RESET}"
+    # Verify configuration
+    if aws sts get-caller-identity &>/dev/null; then
+        log_success "AWS CLI configured and authenticated!"
+        log_info "Your AWS identity:"
+        aws sts get-caller-identity --output table 2>/dev/null | sed 's/^/   /'
+    else
+        log_warning "AWS CLI configured but authentication could not be verified"
+        log_step "Check your credentials and try: aws sts get-caller-identity"
+    fi
 
     log_success "Step 6 complete: AWS CLI is configured!"
 }
@@ -588,7 +603,7 @@ show_completion() {
     log_step "✓ SSH Key - Generated and added to GitHub"
     log_step "✓ 1Password - Password manager configured"
     log_step "✓ AWS Console - Signed in with 2FA"
-    log_step "✓ AWS CLI - SSO configured"
+    log_step "✓ AWS CLI - Credentials configured"
     log_step "✓ Cursor - AI code editor ready"
     log_step "✓ Linear - Project management connected"
     log_step "✓ Slack - Team communication active"
@@ -596,7 +611,7 @@ show_completion() {
 
     echo -e "${BOLD}Quick reference commands:${RESET}"
     echo ""
-    log_step "AWS login:       ${CYAN}aws sso login${RESET}"
+    log_step "AWS identity:    ${CYAN}aws sts get-caller-identity${RESET}"
     log_step "GitHub status:   ${CYAN}gh auth status${RESET}"
     log_step "Test SSH:        ${CYAN}ssh -T git@github.com${RESET}"
     log_step "Update system:   ${CYAN}darwin-rebuild switch --flake .#mac --impure${RESET}"
