@@ -426,7 +426,8 @@ main() {
     check_macos
     cd "$SCRIPT_DIR"
 
-    # Prompt for sudo password upfront
+    # Phase 0: Admin permissions
+    log_section "Admin Permissions"
     sudo -v
 
     # Phase 1: Install Nix
