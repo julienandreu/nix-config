@@ -187,6 +187,9 @@
     };
 
     initContent = ''
+      # Add Cursor CLI to PATH (installed via Homebrew cask)
+      export PATH="/Applications/Cursor.app/Contents/Resources/app/bin:$PATH"
+
       eval "$(zoxide init zsh)"
       source ${pkgs.fzf}/share/fzf/key-bindings.zsh
       source ${pkgs.fzf}/share/fzf/completion.zsh

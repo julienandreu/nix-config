@@ -53,6 +53,31 @@
       autohide-delay = 0.0;
       autohide-time-modifier = 0.4;
     };
+
+    # Set Chrome as the default browser
+    # Note: This sets the URL handlers; a logout/login may be required
+    CustomUserPreferences = {
+      "com.apple.LaunchServices/com.apple.launchservices.secure" = {
+        LSHandlers = [
+          {
+            LSHandlerURLScheme = "http";
+            LSHandlerRoleAll = "com.google.chrome";
+          }
+          {
+            LSHandlerURLScheme = "https";
+            LSHandlerRoleAll = "com.google.chrome";
+          }
+          {
+            LSHandlerContentType = "public.html";
+            LSHandlerRoleAll = "com.google.chrome";
+          }
+          {
+            LSHandlerContentType = "public.xhtml";
+            LSHandlerRoleAll = "com.google.chrome";
+          }
+        ];
+      };
+    };
   };
 
   # Firewall settings (modern nix-darwin API)
