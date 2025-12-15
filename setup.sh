@@ -121,7 +121,7 @@ install_homebrew() {
     fi
 
     log_info "Installing Homebrew..."
-    sudo NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
     # Add Homebrew to PATH for the current session
     if [[ -x "/opt/homebrew/bin/brew" ]]; then
