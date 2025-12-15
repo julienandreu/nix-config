@@ -119,12 +119,6 @@ enable_flakes() {
 
 generate_local_config() {
     local local_nix="$SCRIPT_DIR/local.nix"
-
-    if [[ -f "$local_nix" ]]; then
-        log_success "Local config already exists at local.nix"
-        return 0
-    fi
-
     log_info "Generating local.nix for user: $USER"
 
     # Detect system architecture
@@ -157,13 +151,13 @@ EOF
 
 build_system() {
     log_info "Building system as $(whoami)..."
-    nix build "$SCRIPT_DIR#darwinConfigurations.mac.system" --impure
+    FLAKE_DIR="$SCRIPT_DIR" nix build "$SCRIPT_DIR#darwinConfigurations.mac.system" --impure
     log_success "System built successfully"
 }
 
 activate_system() {
     log_info "Activating system (requires sudo)..."
-    sudo "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure
+    sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure
     log_success "System activated"
 }
 
@@ -317,7 +311,7 @@ EOF
 
 apply_personal_config() {
     log_info "Applying configuration with your personal settings..."
-    darwin-rebuild switch --flake "$SCRIPT_DIR#mac" --impure
+    FLAKE_DIR="$SCRIPT_DIR" darwin-rebuild switch --flake "$SCRIPT_DIR#mac" --impure
     log_success "Personal configuration applied"
 }
 
