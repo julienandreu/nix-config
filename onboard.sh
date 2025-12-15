@@ -124,9 +124,10 @@ setup_chrome() {
     log_step "3. Go to Settings → On startup → Open a specific page"
     log_step "4. Add ${BOLD}https://mail.google.com/${RESET} as your startup page"
     echo ""
-    log_info "Opening Chrome settings for startup pages..."
+    log_info "Opening Chrome startup settings..."
     sleep 1
-    open "chrome://settings/onStartup" 2>/dev/null || open -a "Google Chrome" "https://mail.google.com/"
+    # Use AppleScript to open chrome:// internal URLs
+    osascript -e 'tell application "Google Chrome" to open location "chrome://settings/onStartup"' 2>/dev/null || true
 
     wait_for_completion "Press Enter when Chrome is signed in and configured..."
 
