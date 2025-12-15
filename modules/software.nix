@@ -93,10 +93,13 @@
 
   # Cursor Editor configuration - inlined in Nix
   # Cursor uses VS Code's settings.json format
-  home.file.".config/Cursor/User/settings.json".text = builtins.toJSON {
-    "editor.fontFamily" =
-      "MesloLGL Nerd Font Mono, 'MesloLGL NF', 'Meslo LG L', Menlo, Monaco, 'Courier New', monospace";
-    "editor.fontSize" = 14;
-    "editor.fontLigatures" = false;
+  # Path: ~/Library/Application Support/Cursor/User/settings.json
+  home.file."Library/Application Support/Cursor/User/settings.json" = {
+    force = true;
+    text = builtins.toJSON {
+      "editor.fontFamily" = "'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', 'MesloLGL Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
+      "editor.fontSize" = 14;
+      "editor.fontLigatures" = false;
+    };
   };
 }
