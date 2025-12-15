@@ -14,13 +14,14 @@
     };
 
     casks = [
+      "1password"
+      "cursor"
+      "docker-desktop"
       "ghostty"
       "google-chrome"
-      "cursor"
-      "slack"
-      "linear-linear"
-      "docker-desktop"
       "karabiner-elements"
+      "linear-linear"
+      "slack"
     ];
   };
 
@@ -48,6 +49,20 @@
       # Speed up dock auto-hide animation
       autohide-delay = 0.0;
       autohide-time-modifier = 0.4;
+
+      # Only show these apps in the Dock (removes all defaults)
+      persistent-apps = [
+        "/Applications/Google Chrome.app"
+        "/Applications/Slack.app"
+        "/Applications/Cursor.app"
+        "/Applications/Ghostty.app"
+        "/Applications/Linear.app"
+        "/Applications/1Password.app"
+        "/System/Applications/System Settings.app"
+      ];
+
+      # Don't show recent apps in the Dock
+      show-recents = false;
     };
 
     # Set Chrome as the default browser
