@@ -105,7 +105,11 @@
       "workbench.iconTheme" = "catppuccin-mocha";
 
       # Font settings
-      "editor.fontFamily" = "'MesloLGL Nerd Font Mono', 'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
+      "terminal.integrated.fontFamily" = "'MesloLGL Nerd Font Mono', 'FiraCode Nerd Font Mono', 'Fira Code'";
+      "terminal.integrated.fontSize" = 12;
+      "terminal.integrated.fontLigatures" = true;
+
+      "editor.fontFamily" = "'MesloLGL Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
       "editor.fontSize" = 12;
       "editor.fontLigatures" = true;
     };

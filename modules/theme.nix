@@ -15,7 +15,7 @@
       command_timeout = 500;
       scan_timeout = 30;
 
-      format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch$git_status[](fg:green bg:teal)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
+      format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch$git_status[](fg:green bg:teal)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
 
       palette = "catppuccin_mocha";
 
@@ -88,15 +88,15 @@
         truncation_symbol = "…/";
         substitutions = {
           Documents = "󰈙 ";
-          Downloads = " ";
+          Downloads = " ";
           Music = "󰝚 ";
-          Pictures = " ";
+          Pictures = " ";
           Developer = "󰲋 ";
         };
       };
 
       git_branch = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol $branch ](fg:base bg:green)]($style)";
       };
@@ -107,61 +107,61 @@
       };
 
       nodejs = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       c = {
-        symbol = " ";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       rust = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       golang = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       php = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       java = {
-        symbol = " ";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       kotlin = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       haskell = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       python = {
-        symbol = "";
+        symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
       };
 
       docker_context = {
-        symbol = "";
+        symbol = "";
         style = "bg:mantle";
         format = "[[ $symbol( $context) ](fg:#83a598 bg:color_bg3)]($style)";
       };
@@ -170,7 +170,7 @@
         disabled = false;
         time_format = "%R";
         style = "bg:peach";
-        format = "[[  $time ](fg:mantle bg:peach)]($style)";
+        format = "[[  $time ](fg:mantle bg:peach)]($style)";
       };
 
       line_break = {
@@ -179,12 +179,12 @@
 
       character = {
         disabled = false;
-        success_symbol = "[](bold fg:green)";
-        error_symbol = "[](bold fg:red)";
-        vimcmd_symbol = "[](bold fg:green)";
-        vimcmd_replace_one_symbol = "[](bold fg:purple)";
-        vimcmd_replace_symbol = "[](bold fg:purple)";
-        vimcmd_visual_symbol = "[](bold fg:lavender)";
+        success_symbol = "[](bold fg:green)";
+        error_symbol = "[](bold fg:red)";
+        vimcmd_symbol = "[](bold fg:creen)";
+        vimcmd_replace_one_symbol = "[](bold fg:purple)";
+        vimcmd_replace_symbol = "[](bold fg:purple)";
+        vimcmd_visual_symbol = "[](bold fg:lavender)";
       };
 
       cmd_duration = {
@@ -192,7 +192,7 @@
         min_time = 0;
         show_milliseconds = false;
         style = "bg:crust";
-        format = "[[  $duration ](fg:overlay0 bg:crust)]($style)";
+        format = "[[  $duration ](fg:overlay0 bg:crust)]($style)";
       };
     };
   };
