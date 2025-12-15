@@ -323,9 +323,9 @@ create_secrets_file() {
 
 {
   # Git configuration
-  programs.git = {
-    userName = "${GIT_USER_NAME}";
-    userEmail = "${GIT_USER_EMAIL}";
+  programs.git.settings.user = {
+    name = "${GIT_USER_NAME}";
+    email = "${GIT_USER_EMAIL}";
   };
 
   # You can add other personal overrides here
