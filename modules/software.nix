@@ -99,6 +99,12 @@
   home.file."Library/Application Support/Cursor/User/settings.json" = {
     force = true;
     text = builtins.toJSON {
+      # Catppuccin Mocha Theme
+      # Requires extensions: Catppuccin.catppuccin-vsc + Catppuccin.catppuccin-vsc-icons
+      "workbench.colorTheme" = "Catppuccin Mocha";
+      "workbench.iconTheme" = "catppuccin-mocha";
+
+      # Font settings
       "editor.fontFamily" = "'MesloLGL Nerd Font Mono', 'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
       "editor.fontSize" = 12;
       "editor.fontLigatures" = true;
