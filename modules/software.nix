@@ -58,7 +58,9 @@
     theme = catppuccin-mocha
 
     font-family = MesloLGL Nerd Font Mono
-    font-size = 14
+    font-size = 12
+    font-feature = calt
+    font-feature = liga
 
     window-padding-x = 10
     window-padding-y = 10
@@ -97,9 +99,9 @@
   home.file."Library/Application Support/Cursor/User/settings.json" = {
     force = true;
     text = builtins.toJSON {
-      "editor.fontFamily" = "'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', 'MesloLGL Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
-      "editor.fontSize" = 14;
-      "editor.fontLigatures" = false;
+      "editor.fontFamily" = "'MesloLGL Nerd Font Mono', 'MesloLGS Nerd Font Mono', 'MesloLGM Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
+      "editor.fontSize" = 12;
+      "editor.fontLigatures" = true;
     };
   };
 }
