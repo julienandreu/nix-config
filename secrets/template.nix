@@ -9,9 +9,9 @@
 
 {
   # Override git configuration with your personal details
-  programs.git = {
-    userName = "Your Name";
-    userEmail = "your.email@example.com";
+  programs.git.settings.user = {
+    name = "Your Name";
+    email = "your.email@example.com";
   };
 
   # You can add other personal overrides here
