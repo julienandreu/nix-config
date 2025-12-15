@@ -337,7 +337,7 @@ EOF
 
 apply_personal_config() {
     log_info "Applying configuration with your personal settings..."
-    FLAKE_DIR="$SCRIPT_DIR" darwin-rebuild switch --flake "$SCRIPT_DIR#mac" --impure
+    sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$SCRIPT_DIR#mac" --impure
     log_success "Personal configuration applied"
 }
 
@@ -425,6 +425,9 @@ main() {
 
     check_macos
     cd "$SCRIPT_DIR"
+
+    # Prompt for sudo password upfront
+    sudo -v
 
     # Phase 1: Install Nix
     log_section "Installing Nix"
