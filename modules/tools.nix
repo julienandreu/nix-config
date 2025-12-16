@@ -101,29 +101,8 @@
 
   # Shell aliases for Rust CLI tools
   home.shellAliases = {
-    # Bat aliases
-    cat = "bat --paging=never";
-    catp = "bat"; # cat with pager
-
-    # Dust aliases
-    du = "dust";
-    dua = "dust -d 1"; # disk usage for current directory
-
-    # Procs aliases
-    ps = "procs";
-    pst = "procs --tree"; # process tree
-
-    # Other useful aliases
-    find = "fd";
-    grep = "rg";
-    diff = "delta";
-    top = "btm";
-    bench = "hyperfine";
-    http = "xh";
-
     # Eza aliases
-    ls = "eza";
-    ll = "ls -la";
+    ll = "eza -lah";
 
     # Vim aliases
     vim = "nvim";
