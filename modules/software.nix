@@ -50,6 +50,19 @@
       status.showUntrackedFiles = "normal";
       log.decorate = "short";
 
+      # Delta - syntax-highlighted diffs
+      core.pager = "delta";
+      interactive.diffFilter = "delta --color-only";
+      delta = {
+        navigate = true; # use n/N to jump between diff sections
+        dark = true;
+        line-numbers = true;
+        side-by-side = false; # set to true for side-by-side view
+        syntax-theme = "Catppuccin Mocha";
+      };
+      merge.conflictstyle = "diff3";
+      diff.colorMoved = "default";
+
       aliases = {
         st = "status";
         co = "checkout";

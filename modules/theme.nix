@@ -12,10 +12,11 @@
     enableZshIntegration = true;
 
     settings = {
-      command_timeout = 500;
-      scan_timeout = 30;
+      # Performance: reduce timeouts for snappier prompt
+      command_timeout = 200; # Max time for each module (ms)
+      scan_timeout = 10; # Max time for directory scan (ms)
 
-      format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch$git_status[](fg:green bg:teal)$c$rust$golang$nodejs$php$java$kotlin$haskell$python[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
+      format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch$git_status[](fg:green bg:teal)$nodejs$rust$python$golang[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
 
       palette = "catppuccin_mocha";
 
@@ -104,61 +105,50 @@
       git_status = {
         style = "bg:teal";
         format = "[[($all_status$ahead_behind )](fg:base bg:green)]($style)";
+        # Performance: skip submodule status checks
+        ignore_submodules = true;
       };
+
+
+      # === Language modules ===
+      # Performance: only detect when relevant files present
+      # Each module spawns a process to check version
 
       nodejs = {
         symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-      };
-
-      c = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+        detect_files = [ "package.json" ".nvmrc" ".node-version" ];
+        detect_folders = [ "node_modules" ];
       };
 
       rust = {
         symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-      };
-
-      golang = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-      };
-
-      php = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-      };
-
-      java = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-      };
-
-      kotlin = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
-      };
-
-      haskell = {
-        symbol = "";
-        style = "bg:teal";
-        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+        detect_files = [ "Cargo.toml" ];
       };
 
       python = {
         symbol = "";
         style = "bg:teal";
         format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+        detect_files = [ "pyproject.toml" "requirements.txt" "setup.py" ".python-version" ];
       };
+
+      golang = {
+        symbol = "";
+        style = "bg:teal";
+        format = "[[ $symbol( $version) ](fg:base bg:teal)]($style)";
+        detect_files = [ "go.mod" ];
+      };
+
+      # Disabled for performance - uncomment if needed
+      c.disabled = true;
+      php.disabled = true;
+      java.disabled = true;
+      kotlin.disabled = true;
+      haskell.disabled = true;
 
       docker_context = {
         symbol = "";
@@ -189,7 +179,6 @@
 
       cmd_duration = {
         disabled = false;
-        min_time = 0;
         show_milliseconds = false;
         style = "bg:crust";
         format = "[[  $duration ](fg:overlay0 bg:crust)]($style)";
@@ -238,13 +227,6 @@
       # Bind TAB to lazy compinit (will self-replace after first use)
       zle -N expand-or-complete _lazy_compinit
     '';
-
-    shellAliases = {
-      ll = "ls -la";
-      vim = "nvim";
-      cat = "bat";
-      ls = "eza";
-    };
 
     initContent = ''
       # Fix for Ghostty compatibility - some tools don't recognize xterm-ghostty

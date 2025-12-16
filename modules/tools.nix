@@ -2,13 +2,32 @@
 
 {
   home.packages = with pkgs; [
-    ripgrep
-    fd
-    fzf
-    jq
-    zoxide
+    # ===== Core Search & Navigation (already had) =====
+    ripgrep # grep replacement - fast recursive search
+    fd # find replacement - intuitive file finding
+    fzf # fuzzy finder
+    jq # JSON processor
+    zoxide # smarter cd with frecency
     nixfmt-rfc-style # Nix formatter (RFC-style formatting)
-    # gix # Blazing fast Rust-based git implementation (gitoxide) - package name may differ
+
+    # ===== Rust-based CLI Alternatives =====
+    # See: https://dev.to/lingodotdev/27-rust-based-alternatives-to-classic-cli-apps-2350
+    # Some tools (bat, eza, bottom, tealdeer) are configured via programs.* below
+
+    # File viewing & manipulation
+    dust # du replacement - visual disk usage with bars
+    sd # sed replacement - simpler find & replace syntax
+
+    # Process & system monitoring
+    procs # ps replacement - colored process tables
+
+    # Development tools
+    delta # diff replacement - syntax-highlighted diffs (configured as git pager)
+    just # make replacement - simple command runner
+    hyperfine # time replacement - statistical benchmarking
+
+    # HTTP & networking
+    xh # curl alternative - friendlier HTTP requests
   ];
 
   # Neovim with lazy.nvim plugin manager
@@ -37,6 +56,77 @@
   programs.zoxide = {
     enable = true;
     enableZshIntegration = true;
+  };
+
+  # Eza (ls replacement)
+  programs.eza = {
+    enable = true;
+    enableZshIntegration = true; # Adds aliases: ls, ll, la, lt, lla
+    icons = "auto";
+    git = true;
+    extraOptions = [
+      "--group-directories-first"
+      "--header"
+    ];
+  };
+
+  # Bat (cat replacement)
+  programs.bat = {
+    enable = true;
+    config = {
+      theme = "Catppuccin Mocha";
+      style = "numbers,changes,header";
+      pager = "less -FR";
+    };
+  };
+
+  # Bottom (system monitor)
+  programs.bottom = {
+    enable = true;
+  };
+
+  # Tealdeer (tldr pages)
+  programs.tealdeer = {
+    enable = true;
+    settings = {
+      display = {
+        compact = false;
+        use_pager = true;
+      };
+      updates = {
+        auto_update = true;
+      };
+    };
+  };
+
+  # Shell aliases for Rust CLI tools
+  home.shellAliases = {
+    # Bat aliases
+    cat = "bat --paging=never";
+    catp = "bat"; # cat with pager
+
+    # Dust aliases
+    du = "dust";
+    dua = "dust -d 1"; # disk usage for current directory
+
+    # Procs aliases
+    ps = "procs";
+    pst = "procs --tree"; # process tree
+
+    # Other useful aliases
+    find = "fd";
+    grep = "rg";
+    diff = "delta";
+    top = "btm";
+    bench = "hyperfine";
+    http = "xh";
+
+    # Eza aliases
+    ls = "eza";
+    ll = "ls -la";
+
+    # Vim aliases
+    vim = "nvim";
   };
 
   # FZF
