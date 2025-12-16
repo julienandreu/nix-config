@@ -61,46 +61,17 @@
       show_profile_name_in_menu_bar = false;
     };
     profiles = [
-      {
-        name = "Default";
-        complex_modifications = {
-          rules = [
-            {
-              description = "Change caps_lock to control when used as modifier, escape when used alone";
-              manipulators = [
-                {
-                  from = {
-                    key_code = "caps_lock";
-                    modifiers = {
-                      optional = [ "any" ];
-                    };
-                  };
-                  to = [
-                    {
-                      key_code = "left_control";
-                    }
-                  ];
-                  to_if_alone = [
-                    {
-                      key_code = "escape";
-                    }
-                  ];
-                  type = "basic";
-                }
-              ];
-            }
-          ];
-        };
         # Disable built-in keyboard when any external keyboard is connected
-        disable_built_in_keyboard_if_exists = true;
-        devices = [ ];
-        fn_function_keys = [ ];
-        simple_modifications = [ ];
-        virtual_hid_keyboard = {
-          country_code = 0;
-          keyboard_type_v2 = "ansi";
-        };
-      }
+        {
+          disable_built_in_keyboard_if_exists = true;
+          devices = [ ];
+          fn_function_keys = [ ];
+          simple_modifications = [ ];
+          virtual_hid_keyboard = {
+            country_code = 0;
+            keyboard_type_v2 = "ansi";
+          };
+        }
     ];
   };
 }
