@@ -91,7 +91,17 @@
             }
           ];
         };
-        devices = [ ];
+        devices = [
+          {
+            # External keyboard - disable built-in keyboard when connected
+            identifiers = {
+              is_keyboard = true;
+              vendor_id = 12951;
+              product_id = 50895;
+            };
+            disable_built_in_keyboard_if_exists = true;
+          }
+        ];
         fn_function_keys = [ ];
         simple_modifications = [ ];
         virtual_hid_keyboard = {
