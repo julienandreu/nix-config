@@ -15,13 +15,14 @@ FLAKE="$SCRIPT_DIR#mac"
 
 if [[ -t 1 ]]; then
     GREEN='\033[0;32m'
+    YELLOW='\033[0;33m'
     BLUE='\033[0;34m'
     CYAN='\033[0;36m'
     BOLD='\033[1m'
     DIM='\033[2m'
     RESET='\033[0m'
 else
-    GREEN='' BLUE='' CYAN='' BOLD='' DIM='' RESET=''
+    GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' DIM='' RESET=''
 fi
 
 log_header() {
@@ -43,6 +44,10 @@ log_info() {
 
 log_success() {
     echo -e "${GREEN}✓${RESET}  $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}⚠${RESET}  $1"
 }
 
 log_step() {
@@ -102,7 +107,44 @@ update_flake_lock() {
     log_success "Flake lock updated"
 }
 
+cleanup_home_manager_backups() {
+    log_info "Cleaning up stale home-manager backup files..."
+    
+    # List of files managed by home-manager that might have backups
+    local managed_files=(
+        "$HOME/.zshrc"
+        "$HOME/.zshenv"
+        "$HOME/.zprofile"
+        "$HOME/.bashrc"
+        "$HOME/.bash_profile"
+        "$HOME/.gitconfig"
+    )
+    
+    local cleaned=0
+    for file in "${managed_files[@]}"; do
+        if [[ -f "${file}.backup" ]]; then
+            rm -f "${file}.backup"
+            ((cleaned++))
+        fi
+    done
+    
+    # Also clean any nested backup files (e.g., .zshrc.backup.backup)
+    find "$HOME" -maxdepth 1 -name "*.backup*" -type f 2>/dev/null | while read -r backup; do
+        rm -f "$backup"
+        ((cleaned++))
+    done
+    
+    if [[ $cleaned -gt 0 ]]; then
+        log_success "Removed $cleaned backup file(s)"
+    else
+        log_success "No backup files to clean"
+    fi
+}
+
 rebuild_system() {
+    # Clean up old backups before rebuild to ensure fresh generation
+    cleanup_home_manager_backups
+    
     log_info "Rebuilding configuration (requires sudo)..."
     sudo FLAKE_DIR="$SCRIPT_DIR" darwin-rebuild switch --flake "$FLAKE" --impure
     log_success "System rebuilt and activated"
@@ -133,6 +175,9 @@ main() {
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo -e "${BOLD}${GREEN}  ✓ Update complete${RESET}"
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    log_warning "Start a new terminal session to load shell changes!"
+    log_step "Close this terminal and open a new one, or run: exec zsh"
     echo ""
 }
 

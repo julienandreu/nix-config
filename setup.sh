@@ -181,7 +181,44 @@ build_system() {
     log_success "System built successfully"
 }
 
+cleanup_home_manager_backups() {
+    log_info "Cleaning up stale home-manager backup files..."
+    
+    # List of files managed by home-manager that might have backups
+    local managed_files=(
+        "$HOME/.zshrc"
+        "$HOME/.zshenv"
+        "$HOME/.zprofile"
+        "$HOME/.bashrc"
+        "$HOME/.bash_profile"
+        "$HOME/.gitconfig"
+    )
+    
+    local cleaned=0
+    for file in "${managed_files[@]}"; do
+        if [[ -f "${file}.backup" ]]; then
+            rm -f "${file}.backup"
+            ((cleaned++))
+        fi
+    done
+    
+    # Also clean any nested backup files (e.g., .zshrc.backup.backup)
+    find "$HOME" -maxdepth 1 -name "*.backup*" -type f 2>/dev/null | while read -r backup; do
+        rm -f "$backup"
+        ((cleaned++))
+    done
+    
+    if [[ $cleaned -gt 0 ]]; then
+        log_success "Removed $cleaned backup file(s)"
+    else
+        log_success "No backup files to clean"
+    fi
+}
+
 activate_system() {
+    # Clean up old backups before activation to ensure fresh generation
+    cleanup_home_manager_backups
+    
     log_info "Activating system (requires sudo)..."
     sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure
     log_success "System activated"
@@ -350,6 +387,10 @@ show_final_steps() {
 
     echo ""
     log_success "Nix-darwin system has been installed and configured!"
+    echo ""
+    
+    log_warning "IMPORTANT: Start a new terminal session to load shell changes!"
+    log_step "Close this terminal and open a new one, or run: exec zsh"
     echo ""
 
     log_info "Next step: Run the onboarding wizard to set up your applications."
