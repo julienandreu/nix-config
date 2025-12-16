@@ -47,6 +47,13 @@
   # ==========================================================================
 
   system.defaults = {
+    # Keyboard settings
+    NSGlobalDomain = {
+      # Use F1, F2, etc. keys as standard function keys
+      # (hold Fn key to use special features like brightness/volume)
+      "com.apple.keyboard.fnState" = true;
+    };
+
     # Dock settings
     dock = {
       # Automatically hide and show the Dock
@@ -73,6 +80,10 @@
     # Set Chrome as the default browser
     # Note: This sets the URL handlers; a logout/login may be required
     CustomUserPreferences = {
+      # Globe (🌐) key behavior: 0 = Do Nothing, 1 = Change Input Source, 2 = Show Emoji & Symbols, 3 = Start Dictation
+      "com.apple.HIToolbox" = {
+        AppleFnUsageType = 0;
+      };
       "com.apple.LaunchServices/com.apple.launchservices.secure" = {
         LSHandlers = [
           {
