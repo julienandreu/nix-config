@@ -265,28 +265,12 @@
   home.file.".config/ghostty/config".text = ''
     # Font settings
     font-family = MesloLGS Nerd Font Mono
-    font-size = 14
-
-    # Catppuccin Mocha theme (consistent with rest of setup)
-    theme = catppuccin-mocha
-
-    # Window appearance
-    background-opacity = 0.95
-    window-padding-x = 10
-    window-padding-y = 10
-
-    # Cursor
-    cursor-style = block
-    cursor-style-blink = true
+    font-size = 12
 
     # Shell integration
     shell-integration = zsh
 
     # macOS specific
     macos-option-as-alt = true
-    window-decoration = true
-
-    # Performance
-    gtk-single-instance = true
   '';
 }
