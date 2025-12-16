@@ -2,7 +2,11 @@
 
 {
   home.packages = with pkgs; [
-    nodejs
+    # Node.js version manager (replaces nvm)
+    # fnm is ~150x faster than nvm (~2ms vs ~300ms init time)
+    # Usage: fnm install 20, fnm use 20, fnm default 20
+    # Supports .nvmrc and .node-version files
+    fnm
 
     # Rust core
     rustc
