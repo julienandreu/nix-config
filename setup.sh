@@ -442,6 +442,9 @@ activate_system() {
     # This ensures backupFileExtension works even if backup files from previous runs exist
     export HOME_MANAGER_BACKUP_OVERWRITE=1
     
+    # Define critical files that home-manager manages
+    local critical_files=("$HOME/.zshrc" "$HOME/.zshenv" "$HOME/.zprofile")
+    
     # Remove any nested backup files (.backup.backup) that might cause issues
     find "$HOME" -maxdepth 1 -name "*.backup.backup" -type f 2>/dev/null | while read -r backup; do
         rm -f "$backup"
@@ -462,14 +465,28 @@ activate_system() {
         log_warning "File conflicts detected - home-manager backup mechanism may not be working"
         log_info "Attempting workaround: temporarily moving conflicting files..."
         
-        # For files that would be clobbered, move them out of the way
-        # home-manager will create fresh ones, and user can merge manually if needed
+        # Extract conflicting files from the error message
+        # Format: "Existing file '/path/to/file' would be clobbered"
         local moved_files=()
+        while IFS= read -r line; do
+            # Extract file path between single quotes using sed
+            local conflicting_file
+            conflicting_file=$(echo "$line" | sed -n "s/.*Existing file '\([^']*\)' would be clobbered.*/\1/p")
+            if [[ -n "$conflicting_file" ]] && [[ -f "$conflicting_file" ]]; then
+                local backup_name="${conflicting_file}.backup.manual"
+                log_info "Moving $(basename "$conflicting_file") to $(basename "$backup_name")..."
+                mv "$conflicting_file" "$backup_name"
+                moved_files+=("$backup_name")
+            fi
+        done < <(grep "would be clobbered" "$rebuild_output" 2>/dev/null || true)
+        
+        # Also check critical files as fallback (in case extraction didn't work)
         for file in "${critical_files[@]}"; do
-            if grep -q "$(basename "$file")" "$rebuild_output" 2>/dev/null; then
-                if [[ -f "$file" ]]; then
-                    local backup_name="${file}.backup.manual"
-                    log_info "Moving $(basename "$file") to $backup_name..."
+            if grep -q "$(basename "$file")" "$rebuild_output" 2>/dev/null && [[ -f "$file" ]]; then
+                local backup_name="${file}.backup.manual"
+                # Check if backup already exists (from previous loop)
+                if [[ ! -f "$backup_name" ]]; then
+                    log_info "Moving $(basename "$file") to $(basename "$backup_name")..."
                     mv "$file" "$backup_name"
                     moved_files+=("$backup_name")
                 fi
@@ -478,7 +495,7 @@ activate_system() {
         
         # Retry activation
         log_info "Retrying activation with files moved out of the way..."
-        if sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure; then
+        if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure; then
             log_success "System activated"
             if [[ ${#moved_files[@]} -gt 0 ]]; then
                 log_warning "Some files were moved to .backup.manual - you may want to merge them manually"
