@@ -23,6 +23,19 @@
       push.autoSetupRemote = true;
       core.editor = "nvim";
 
+      # Color settings
+      color.ui = "auto";
+
+      # GPG settings
+      gpg.format = "ssh";
+      commit.gpgsign = true;
+
+      # Git LFS filter
+      filter.lfs.required = true;
+      filter.lfs.clean = "git-lfs clean -- %f";
+      filter.lfs.smudge = "git-lfs smudge -- %f";
+      filter.lfs.process = "git-lfs filter-process";
+
       # ===== Performance Optimizations =====
       # See: https://www.git-tower.com/blog/git-performance/
       # See: https://stackoverflow.com/questions/4994772/ways-to-improve-git-status-performance
@@ -61,7 +74,7 @@
         side-by-side = false; # set to true for side-by-side view
         syntax-theme = "Catppuccin Mocha";
       };
-      merge.conflictstyle = "diff3";
+      merge.conflictstyle = "zdiff3";
       diff.colorMoved = "default";
 
       aliases = {
