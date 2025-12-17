@@ -73,17 +73,13 @@
         symbol = "";
         style = "bg:teal";
         format = "[[ $symbol $branch ](fg:base bg:green)]($style)";
-        # Performance: only activate when .git directory exists
-        # Show branch info even in detached HEAD state (shows commit hash)
-        only_attached = false;
       };
 
       git_status = {
         style = "bg:teal";
         format = "[[($all_status$ahead_behind )](fg:base bg:green)]($style)";
-        # Performance: skip submodule status checks
         ignore_submodules = true;
-        # Performance: only activate when .git directory exists
+        use_git_executable = true;
       };
 
 
