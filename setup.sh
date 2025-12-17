@@ -96,15 +96,150 @@ check_macos() {
 # Installation Functions
 # =============================================================================
 
-install_nix() {
-    if command -v nix &>/dev/null; then
-        log_success "Nix is already installed"
+check_nix_installation_mode() {
+    # Check if Nix is installed in multi-user mode
+    # Multi-user mode has:
+    # - /nix directory owned by root
+    # - nix-daemon service running
+    # - Build users (_nixbld1, etc.)
+    
+    if [[ ! -d "/nix" ]]; then
+        # Check if there's a user-level Nix installation
+        if [[ -d "$HOME/.nix-profile" ]] || [[ -d "$HOME/.nix" ]]; then
+            echo "single-user"
+        else
+            echo "none"
+        fi
         return 0
     fi
+    
+    # Check if /nix is owned by root (multi-user) or user (single-user)
+    local nix_owner
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        nix_owner=$(stat -f "%Su" /nix 2>/dev/null || echo "")
+    else
+        nix_owner=$(stat -c "%U" /nix 2>/dev/null || echo "")
+    fi
+    
+    if [[ "$nix_owner" == "root" ]]; then
+        # Check if daemon is running
+        if sudo launchctl list 2>/dev/null | grep -q "com.nixos.nix-daemon"; then
+            echo "multi-user"
+        else
+            # Check if daemon plist exists
+            if [[ -f "/Library/LaunchDaemons/org.nixos.nix-daemon.plist" ]] || \
+               [[ -f "/Library/LaunchDaemons/com.nixos.nix-daemon.plist" ]]; then
+                echo "multi-user-incomplete"
+            else
+                # Root-owned /nix but no daemon - might be transitioning
+                echo "multi-user-incomplete"
+            fi
+        fi
+    else
+        echo "single-user"
+    fi
+}
 
-    log_info "Installing Nix..."
-    sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install)
-    log_success "Nix installed successfully"
+uninstall_single_user_nix() {
+    log_warning "Single-user Nix installation detected"
+    log_info "nix-darwin requires multi-user daemon installation"
+    echo ""
+    log_step "To fix this, you need to uninstall the current Nix installation"
+    log_step "and reinstall it in multi-user mode."
+    echo ""
+    read -rp "   Uninstall Nix now and reinstall in multi-user mode? (Y/n): " uninstall_choice
+    uninstall_choice="${uninstall_choice:-y}"
+    
+    if [[ ! "$uninstall_choice" =~ ^[Yy]$ ]]; then
+        log_error "Cannot proceed without multi-user Nix installation"
+        log_step "Manually uninstall Nix, then run this script again"
+        log_step "Or set nix.enable = false in your nix-darwin config (not recommended)"
+        exit 1
+    fi
+    
+    log_info "Uninstalling single-user Nix installation..."
+    
+    # Remove Nix directories
+    if [[ -d "$HOME/.nix-profile" ]]; then
+        rm -rf "$HOME/.nix-profile"
+    fi
+    if [[ -d "$HOME/.nix" ]]; then
+        rm -rf "$HOME/.nix"
+    fi
+    
+    # Remove Nix from shell config files
+    local shell_configs=(
+        "$HOME/.zshrc"
+        "$HOME/.zshenv"
+        "$HOME/.zprofile"
+        "$HOME/.bashrc"
+        "$HOME/.bash_profile"
+        "$HOME/.profile"
+    )
+    
+    for config_file in "${shell_configs[@]}"; do
+        if [[ -f "$config_file" ]]; then
+            # Remove lines containing .nix-profile
+            sed -i.bak '/\.nix-profile/d' "$config_file" 2>/dev/null || true
+            rm -f "${config_file}.bak" 2>/dev/null || true
+        fi
+    done
+    
+    # Remove /nix if it exists and is owned by user
+    if [[ -d "/nix" ]]; then
+        local nix_owner
+        nix_owner=$(stat -f "%Su" /nix 2>/dev/null || echo "")
+        if [[ "$nix_owner" != "root" ]]; then
+            log_info "Removing /nix directory (requires sudo)..."
+            sudo rm -rf /nix
+        fi
+    fi
+    
+    log_success "Single-user Nix installation removed"
+}
+
+install_nix() {
+    local nix_mode
+    nix_mode=$(check_nix_installation_mode)
+    
+    case "$nix_mode" in
+        "multi-user")
+            log_success "Nix is already installed in multi-user mode"
+            # Source nix environment if not already in PATH
+            if ! command -v nix &>/dev/null; then
+                log_info "Setting up Nix environment..."
+                if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
+                    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+                fi
+            fi
+            return 0
+            ;;
+        "multi-user-incomplete")
+            log_warning "Nix appears to be in multi-user mode but daemon is not running"
+            log_info "Attempting to start nix-daemon..."
+            sudo launchctl load /Library/LaunchDaemons/org.nixos.nix-daemon.plist 2>/dev/null || true
+            if command -v nix &>/dev/null; then
+                log_success "Nix daemon started"
+                return 0
+            fi
+            ;;
+        "single-user")
+            uninstall_single_user_nix
+            ;;
+        "none")
+            # No Nix installed, proceed with installation
+            ;;
+    esac
+    
+    log_info "Installing Nix in multi-user daemon mode..."
+    # Use --daemon flag to enforce multi-user installation
+    sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --daemon
+    log_success "Nix installed successfully in multi-user mode"
+    
+    # Source the nix-daemon environment
+    if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
+        . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    fi
 }
 
 install_homebrew() {
