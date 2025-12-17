@@ -12,8 +12,9 @@
     enableZshIntegration = true;
 
     settings = {
-      # Performance: reduce timeouts for snappier prompt
-      command_timeout = 200; # Max time for each module (ms)
+      # Performance: balance timeouts for snappier prompt while avoiding timeouts
+      # Increased from 200ms to 1000ms to prevent git command timeouts on terminal startup
+      command_timeout = 1000; # Max time for each module (ms)
       scan_timeout = 10; # Max time for directory scan (ms)
 
       format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch$git_status[](fg:green bg:teal)$nodejs$rust$python$golang[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
@@ -72,6 +73,9 @@
         symbol = "";
         style = "bg:teal";
         format = "[[ $symbol $branch ](fg:base bg:green)]($style)";
+        # Performance: only activate when .git directory exists
+        # Show branch info even in detached HEAD state (shows commit hash)
+        only_attached = false;
       };
 
       git_status = {
@@ -79,6 +83,7 @@
         format = "[[($all_status$ahead_behind )](fg:base bg:green)]($style)";
         # Performance: skip submodule status checks
         ignore_submodules = true;
+        # Performance: only activate when .git directory exists
       };
 
 

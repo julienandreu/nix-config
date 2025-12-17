@@ -102,7 +102,7 @@ check_nix_installation_mode() {
     # - /nix directory owned by root
     # - nix-daemon service running
     # - Build users (_nixbld1, etc.)
-    
+
     if [[ ! -d "/nix" ]]; then
         # Check if there's a user-level Nix installation
         if [[ -d "$HOME/.nix-profile" ]] || [[ -d "$HOME/.nix" ]]; then
@@ -112,7 +112,7 @@ check_nix_installation_mode() {
         fi
         return 0
     fi
-    
+
     # Check if /nix is owned by root (multi-user) or user (single-user)
     local nix_owner
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -120,7 +120,7 @@ check_nix_installation_mode() {
     else
         nix_owner=$(stat -c "%U" /nix 2>/dev/null || echo "")
     fi
-    
+
     if [[ "$nix_owner" == "root" ]]; then
         # Check if daemon is running
         if sudo launchctl list 2>/dev/null | grep -q "com.nixos.nix-daemon"; then
@@ -149,16 +149,16 @@ uninstall_single_user_nix() {
     echo ""
     read -rp "   Uninstall Nix now and reinstall in multi-user mode? (Y/n): " uninstall_choice
     uninstall_choice="${uninstall_choice:-y}"
-    
+
     if [[ ! "$uninstall_choice" =~ ^[Yy]$ ]]; then
         log_error "Cannot proceed without multi-user Nix installation"
         log_step "Manually uninstall Nix, then run this script again"
         log_step "Or set nix.enable = false in your nix-darwin config (not recommended)"
         exit 1
     fi
-    
+
     log_info "Uninstalling single-user Nix installation..."
-    
+
     # Remove Nix directories
     if [[ -d "$HOME/.nix-profile" ]]; then
         rm -rf "$HOME/.nix-profile"
@@ -166,7 +166,7 @@ uninstall_single_user_nix() {
     if [[ -d "$HOME/.nix" ]]; then
         rm -rf "$HOME/.nix"
     fi
-    
+
     # Remove Nix from shell config files
     local shell_configs=(
         "$HOME/.zshrc"
@@ -176,7 +176,7 @@ uninstall_single_user_nix() {
         "$HOME/.bash_profile"
         "$HOME/.profile"
     )
-    
+
     for config_file in "${shell_configs[@]}"; do
         if [[ -f "$config_file" ]]; then
             # Remove lines containing .nix-profile
@@ -184,14 +184,14 @@ uninstall_single_user_nix() {
             rm -f "${config_file}.bak" 2>/dev/null || true
         fi
     done
-    
+
     # Remove /nix if it exists and is owned by user
     if [[ -d "/nix" ]]; then
         local nix_owner
         nix_owner=$(stat -f "%Su" /nix 2>/dev/null || echo "")
         if [[ "$nix_owner" != "root" ]]; then
             log_info "Removing /nix directory (requires sudo)..."
-            
+
             # Check if /nix is a volume mount (macOS installer creates it as a volume)
             local mount_info
             mount_info=$(mount | grep "on /nix" || true)
@@ -205,25 +205,25 @@ uninstall_single_user_nix() {
                 # Wait a moment for unmount to complete
                 sleep 1
             fi
-            
+
             # Stop any Nix processes that might be using /nix
             if command -v nix-daemon &>/dev/null; then
                 sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist 2>/dev/null || true
                 sudo launchctl unload /Library/LaunchDaemons/com.nixos.nix-daemon.plist 2>/dev/null || true
             fi
-            
+
             # Kill any nix processes
             sudo pkill -9 nix-daemon 2>/dev/null || true
             sudo pkill -9 nix 2>/dev/null || true
-            
+
             # Wait a moment for processes to terminate
             sleep 2
-            
+
             # Remove .Trashes directory if it exists (macOS creates this automatically)
             if [[ -d "/nix/.Trashes" ]]; then
                 sudo rm -rf /nix/.Trashes 2>/dev/null || true
             fi
-            
+
             # Try to remove /nix directory
             # Use a more forceful approach: remove contents first, then directory
             # Remove visible files first
@@ -232,7 +232,7 @@ uninstall_single_user_nix() {
             sudo rm -rf /nix/.Trashes 2>/dev/null || true
             # Try to remove hidden files/directories (but not . and ..)
             sudo find /nix -mindepth 1 -maxdepth 1 -name '.*' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
-            
+
             # Try to remove the directory itself
             if sudo rmdir /nix 2>/dev/null || sudo rm -rf /nix 2>/dev/null; then
                 log_success "/nix directory removed"
@@ -256,14 +256,14 @@ uninstall_single_user_nix() {
             fi
         fi
     fi
-    
+
     log_success "Single-user Nix installation cleanup completed"
 }
 
 install_nix() {
     local nix_mode
     nix_mode=$(check_nix_installation_mode)
-    
+
     case "$nix_mode" in
         "multi-user")
             log_success "Nix is already installed in multi-user mode"
@@ -292,12 +292,12 @@ install_nix() {
             # No Nix installed, proceed with installation
             ;;
     esac
-    
+
     log_info "Installing Nix in multi-user daemon mode..."
     # Use --daemon flag to enforce multi-user installation
     sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --daemon
     log_success "Nix installed successfully in multi-user mode"
-    
+
     # Source the nix-daemon environment
     if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
@@ -350,20 +350,20 @@ prompt_catppuccin_flavor() {
     echo "  🌺  3) Macchiato  - Dark theme" >&2
     echo "  🌿  4) Mocha      - Darkest theme (recommended)" >&2
     echo "" >&2
-    
+
     local flavor="mocha"  # Default to mocha
     while true; do
         local choice
         echo -e "${CYAN}   Enter your choice [1=Latte, 2=Frappé, 3=Macchiato, 4=Mocha] (default: 4)${RESET}" >&2
         read -rp "   → " choice
-        
+
         # Default to mocha if empty or just Enter pressed
         if [[ -z "$choice" ]]; then
             flavor="mocha"
             log_success "Selected: 🌿 Mocha (darkest theme) [default]" >&2
             break
         fi
-        
+
         case "$choice" in
             1)
                 flavor="latte"
@@ -391,7 +391,7 @@ prompt_catppuccin_flavor() {
                 ;;
         esac
     done
-    
+
     # Output only the flavor to stdout (for command substitution)
     echo "$flavor"
 }
@@ -407,7 +407,7 @@ generate_local_config() {
     case "$arch" in
         arm64) system="aarch64-darwin" ;;
         x86_64) system="x86_64-darwin" ;;
-        *) 
+        *)
             log_error "Unsupported architecture: $arch"
             exit 1
             ;;
@@ -441,7 +441,7 @@ build_system() {
 
 cleanup_home_manager_backups() {
     log_info "Cleaning up stale home-manager backup files..."
-    
+
     # List of files managed by home-manager that might have backups
     local managed_files=(
         "$HOME/.zshrc"
@@ -451,7 +451,7 @@ cleanup_home_manager_backups() {
         "$HOME/.bash_profile"
         "$HOME/.gitconfig"
     )
-    
+
     local cleaned=0
     for file in "${managed_files[@]}"; do
         if [[ -f "${file}.backup" ]]; then
@@ -459,13 +459,13 @@ cleanup_home_manager_backups() {
             ((cleaned++))
         fi
     done
-    
+
     # Also clean any nested backup files (e.g., .zshrc.backup.backup)
     find "$HOME" -maxdepth 1 -name "*.backup*" -type f 2>/dev/null | while read -r backup; do
         rm -f "$backup"
         ((cleaned++))
     done
-    
+
     if [[ $cleaned -gt 0 ]]; then
         log_success "Removed $cleaned backup file(s)"
     else
@@ -475,14 +475,14 @@ cleanup_home_manager_backups() {
 
 backup_critical_files() {
     log_info "Backing up critical configuration files..."
-    
+
     # List of files that home-manager will manage and need backup
     local critical_files=(
         "$HOME/.zshrc"
         "$HOME/.zshenv"
         "$HOME/.zprofile"
     )
-    
+
     local backed_up=0
     for file in "${critical_files[@]}"; do
         if [[ -f "$file" ]] && [[ ! -f "${file}.backup" ]]; then
@@ -490,7 +490,7 @@ backup_critical_files() {
             ((backed_up++))
         fi
     done
-    
+
     if [[ $backed_up -gt 0 ]]; then
         log_success "Backed up $backed_up file(s)"
     fi
@@ -498,19 +498,19 @@ backup_critical_files() {
 
 activate_system() {
     log_info "Activating system (requires sudo)..."
-    
+
     # Set environment variable to allow home-manager to overwrite existing backup files
     # This ensures backupFileExtension works even if backup files from previous runs exist
     export HOME_MANAGER_BACKUP_OVERWRITE=1
-    
+
     # Define critical files that home-manager manages
     local critical_files=("$HOME/.zshrc" "$HOME/.zshenv" "$HOME/.zprofile")
-    
+
     # Remove any nested backup files (.backup.backup) that might cause issues
     find "$HOME" -maxdepth 1 -name "*.backup.backup" -type f 2>/dev/null | while read -r backup; do
         rm -f "$backup"
     done
-    
+
     # Try activation - home-manager should create backups via backupFileExtension
     # HOME_MANAGER_BACKUP_OVERWRITE allows overwriting existing backups if needed
     local rebuild_output
@@ -520,12 +520,12 @@ activate_system() {
         log_success "System activated"
         return 0
     fi
-    
+
     # Check if failure was due to file conflicts
     if grep -q "would be clobbered" "$rebuild_output" 2>/dev/null; then
         log_warning "File conflicts detected - home-manager backup mechanism may not be working"
         log_info "Attempting workaround: temporarily moving conflicting files..."
-        
+
         # Extract conflicting files from the error message
         # Format: "Existing file '/path/to/file' would be clobbered"
         local moved_files=()
@@ -540,7 +540,7 @@ activate_system() {
                 moved_files+=("$backup_name")
             fi
         done < <(grep "would be clobbered" "$rebuild_output" 2>/dev/null || true)
-        
+
         # Also check critical files as fallback (in case extraction didn't work)
         for file in "${critical_files[@]}"; do
             if grep -q "$(basename "$file")" "$rebuild_output" 2>/dev/null && [[ -f "$file" ]]; then
@@ -553,7 +553,7 @@ activate_system() {
                 fi
             fi
         done
-        
+
         # Retry activation
         log_info "Retrying activation with files moved out of the way..."
         if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure; then
@@ -565,7 +565,7 @@ activate_system() {
             return 0
         fi
     fi
-    
+
     rm -f "$rebuild_output"
     log_error "System activation failed"
     log_step "Check the error messages above for details"
@@ -576,28 +576,28 @@ activate_system() {
 
 install_node_lts() {
     log_info "Installing Node.js LTS via fnm..."
-    
+
     # Source fnm environment if available
     if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
     fi
-    
+
     # Check if fnm is available
     if ! command -v fnm &>/dev/null; then
         log_warning "fnm not found in PATH, skipping Node.js LTS installation"
         log_step "Node.js LTS will be installed automatically on first shell startup"
         return 0
     fi
-    
+
     # Initialize fnm for this session
     eval "$(fnm env --shell bash)"
-    
+
     # Check if Node.js LTS is already installed
     if [ -f "$HOME/.fnm/aliases/default" ]; then
         log_success "Node.js LTS already installed"
         return 0
     fi
-    
+
     # Install Node.js LTS
     if fnm install --lts; then
         fnm default lts-latest
@@ -777,19 +777,19 @@ apply_personal_config() {
 
 start_karabiner_elements() {
     log_info "Starting Karabiner Elements..."
-    
+
     # Check if Karabiner Elements is installed
     if [[ ! -d "/Applications/Karabiner-Elements.app" ]]; then
         log_warning "Karabiner Elements not found - it may not be installed yet"
         return 0
     fi
-    
+
     # Check if Karabiner Elements is already running
     if pgrep -f "Karabiner-Elements" > /dev/null; then
         log_success "Karabiner Elements is already running"
         return 0
     fi
-    
+
     # Start Karabiner Elements
     if open -a "Karabiner-Elements" 2>/dev/null; then
         log_success "Karabiner Elements started"
@@ -805,7 +805,7 @@ show_final_steps() {
     echo ""
     log_success "Nix-darwin system has been installed and configured!"
     echo ""
-    
+
     log_warning "IMPORTANT: Start a new terminal session to load shell changes!"
     log_step "Close this terminal and open a new one, or run: exec zsh"
     echo ""
@@ -876,7 +876,7 @@ main() {
     # Fix SSL certificates (link Nix certificates to system location)
     log_info "Removing SSL certificates..."
     sudo rm -f /etc/ssl/certs/ca-certificates.crt
-    
+
     # Phase 2: Install Homebrew
     log_section "Installing Homebrew"
     install_homebrew
@@ -888,7 +888,7 @@ main() {
     # Phase 4: Build and activate system
     log_section "Building System"
     build_system
-    
+
     # Activate system - continue even if there are file conflicts
     if ! activate_system; then
         log_warning "System activation had issues, but continuing setup..."
@@ -911,7 +911,7 @@ main() {
         setup_git_config
         setup_ssh_key
         create_secrets_file
-        
+
         # Apply personal config - continue even if there are issues
         if ! apply_personal_config; then
             log_warning "Personal configuration had issues, but continuing setup..."
@@ -927,15 +927,16 @@ main() {
     show_final_steps
     run_onboarding
 
-    # Final prompt to launch shell
+    # Final message - don't block on user input to avoid hanging processes
     echo ""
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${BOLD}${GREEN}  🎉 Setup complete! Start a new terminal to use your shell.${RESET}"
+    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    read -rp "   You're all done with the install, press enter to launch your shell... " _
-    echo ""
-    
-    # Launch shell (use exec to replace current process)
-    exec zsh
+
+    # Exit cleanly instead of exec zsh to avoid hanging processes
+    # User should start a new terminal session themselves
+    exit 0
 }
 
 main "$@"
