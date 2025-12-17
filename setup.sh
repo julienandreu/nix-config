@@ -341,52 +341,58 @@ enable_flakes() {
 }
 
 prompt_catppuccin_flavor() {
-    log_section "Catppuccin Theme Selection"
-    echo ""
-    log_info "Choose your Catppuccin flavor:"
-    echo ""
-    echo "  🌻  1) Latte      - Light theme"
-    echo "  🪴  2) Frappé     - Medium-dark theme"
-    echo "  🌺  3) Macchiato  - Dark theme"
-    echo "  🌿  4) Mocha      - Darkest theme (recommended)"
-    echo ""
+    log_section "Catppuccin Theme Selection" >&2
+    echo "" >&2
+    log_info "Choose your Catppuccin flavor:" >&2
+    echo "" >&2
+    echo "  🌻  1) Latte      - Light theme" >&2
+    echo "  🪴  2) Frappé     - Medium-dark theme" >&2
+    echo "  🌺  3) Macchiato  - Dark theme" >&2
+    echo "  🌿  4) Mocha      - Darkest theme (recommended)" >&2
+    echo "" >&2
     
-    local flavor
+    local flavor="mocha"  # Default to mocha
     while true; do
         local choice
-        echo -e "${CYAN}   Enter your choice [1=Latte, 2=Frappé, 3=Macchiato, 4=Mocha]${RESET}"
+        echo -e "${CYAN}   Enter your choice [1=Latte, 2=Frappé, 3=Macchiato, 4=Mocha] (default: 4)${RESET}" >&2
         read -rp "   → " choice
-        choice="${choice:-4}"  # Default to 4 if empty
+        
+        # Default to mocha if empty or just Enter pressed
+        if [[ -z "$choice" ]]; then
+            flavor="mocha"
+            log_success "Selected: 🌿 Mocha (darkest theme) [default]" >&2
+            break
+        fi
         
         case "$choice" in
             1)
                 flavor="latte"
-                log_success "Selected: 🌻 Latte (light theme)"
+                log_success "Selected: 🌻 Latte (light theme)" >&2
                 break
                 ;;
             2)
                 flavor="frappe"
-                log_success "Selected: 🪴 Frappé (medium-dark theme)"
+                log_success "Selected: 🪴 Frappé (medium-dark theme)" >&2
                 break
                 ;;
             3)
                 flavor="macchiato"
-                log_success "Selected: 🌺 Macchiato (dark theme)"
+                log_success "Selected: 🌺 Macchiato (dark theme)" >&2
                 break
                 ;;
             4)
                 flavor="mocha"
-                log_success "Selected: 🌿 Mocha (darkest theme)"
+                log_success "Selected: 🌿 Mocha (darkest theme)" >&2
                 break
                 ;;
             *)
-                log_warning "Invalid choice '$choice'. Please enter 1, 2, 3, or 4."
-                echo ""
+                log_warning "Invalid choice '$choice'. Please enter 1, 2, 3, or 4 (or press Enter for default)." >&2
+                echo "" >&2
                 ;;
         esac
     done
     
-    echo ""
+    # Output only the flavor to stdout (for command substitution)
     echo "$flavor"
 }
 
