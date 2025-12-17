@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, catppuccinFlavor, ... }:
 
 {
   # Install nerd fonts
@@ -18,9 +18,9 @@
 
       format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch$git_status[](fg:green bg:teal)$nodejs$rust$python$golang[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
 
-      palette = "catppuccin_mocha";
+      palette = "catppuccin_${catppuccinFlavor}";
 
-      palettes.catppuccin_mocha = {
+      palettes."catppuccin_${catppuccinFlavor}" = {
         rosewater = "#f5e0dc";
         flamingo = "#f2cdcd";
         pink = "#f5c2e7";
@@ -250,7 +250,26 @@
 
   catppuccin.bat = {
     enable = true;
-    flavor = "mocha";
+    flavor = catppuccinFlavor;
+  };
+
+  # Delta - Catppuccin theme
+  catppuccin.delta = {
+    enable = true;
+    flavor = catppuccinFlavor;
+  };
+
+  # Starship - Catppuccin theme
+  # Note: Custom settings are preserved, module ensures palette is available
+  catppuccin.starship = {
+    enable = true;
+    flavor = catppuccinFlavor;
+  };
+
+  # Eza - Catppuccin theme
+  catppuccin.eza = {
+    enable = true;
+    flavor = catppuccinFlavor;
   };
 
   programs.eza = {
@@ -258,6 +277,24 @@
     enableZshIntegration = true;
     git = true;
     icons = "auto";
+  };
+
+  # Bottom (btm) - Catppuccin theme
+  catppuccin.bottom = {
+    enable = true;
+    flavor = catppuccinFlavor;
+  };
+
+  # fzf - Catppuccin theme
+  catppuccin.fzf = {
+    enable = true;
+    flavor = catppuccinFlavor;
+  };
+
+  # zsh-syntax-highlighting - Catppuccin theme
+  catppuccin.zsh-syntax-highlighting = {
+    enable = true;
+    flavor = catppuccinFlavor;
   };
 
   # Ghostty terminal configuration

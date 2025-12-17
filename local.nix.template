@@ -19,4 +19,8 @@
 
   # Your home directory (run: echo $HOME)
   homeDirectory = "/Users/your-username";
+
+  # Catppuccin theme flavor
+  # Options: "latte", "frappe", "macchiato", "mocha"
+  catppuccinFlavor = "mocha";
 }

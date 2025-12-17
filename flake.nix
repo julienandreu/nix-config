@@ -37,7 +37,7 @@
           flakeDir + "/local.nix"
         else
           builtins.throw "FLAKE_DIR not set. Use --impure flag.";
-      inherit (import localNixPath) system username homeDirectory;
+      inherit (import localNixPath) system username homeDirectory catppuccinFlavor;
 
       # pkgs for non-darwin outputs (formatter, standalone HM)
       pkgsFor = import nixpkgs {
@@ -49,8 +49,8 @@
       darwinConfigurations.mac = darwin.lib.darwinSystem {
         inherit system;
 
-        # Make username/catppuccin available to darwin + HM modules
-        specialArgs = { inherit username homeDirectory catppuccin; };
+        # Make username/catppuccin/flavor available to darwin + HM modules
+        specialArgs = { inherit username homeDirectory catppuccin catppuccinFlavor; };
 
         modules = [
           # nixpkgs config the nix-darwin way
@@ -78,7 +78,7 @@
               # This prevents "would be clobbered" errors during activation
               home-manager.backupFileExtension = "backup";
 
-              home-manager.extraSpecialArgs = { inherit username homeDirectory catppuccin; };
+              home-manager.extraSpecialArgs = { inherit username homeDirectory catppuccin catppuccinFlavor; };
 
               # IMPORTANT: don't use $USER/env here
               home-manager.users.${username} = {
@@ -93,7 +93,7 @@
       # Standalone home-manager configuration (optional)
       homeConfigurations.${username} = home-manager.lib.homeManagerConfiguration {
         pkgs = pkgsFor;
-        extraSpecialArgs = { inherit username homeDirectory catppuccin; };
+        extraSpecialArgs = { inherit username homeDirectory catppuccin catppuccinFlavor; };
         modules = [ ./home.nix ];
       };
 
