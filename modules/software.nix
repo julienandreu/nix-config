@@ -4,6 +4,7 @@
   home.packages = with pkgs; [
     # Development tools
     docker-compose
+    terraform
   ];
 
   # Git configuration

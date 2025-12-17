@@ -421,6 +421,40 @@ activate_system() {
     log_success "System activated"
 }
 
+install_node_lts() {
+    log_info "Installing Node.js LTS via fnm..."
+    
+    # Source fnm environment if available
+    if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
+        . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    fi
+    
+    # Check if fnm is available
+    if ! command -v fnm &>/dev/null; then
+        log_warning "fnm not found in PATH, skipping Node.js LTS installation"
+        log_step "Node.js LTS will be installed automatically on first shell startup"
+        return 0
+    fi
+    
+    # Initialize fnm for this session
+    eval "$(fnm env --shell bash)"
+    
+    # Check if Node.js LTS is already installed
+    if [ -f "$HOME/.fnm/aliases/default" ]; then
+        log_success "Node.js LTS already installed"
+        return 0
+    fi
+    
+    # Install Node.js LTS
+    if fnm install --lts; then
+        fnm default lts-latest
+        log_success "Node.js LTS installed and set as default"
+    else
+        log_warning "Failed to install Node.js LTS"
+        log_step "You can install it manually later with: fnm install --lts && fnm default lts-latest"
+    fi
+}
+
 # =============================================================================
 # Configuration Functions
 # =============================================================================
@@ -671,6 +705,10 @@ main() {
     log_section "Building System"
     build_system
     activate_system
+
+    # Phase 4.5: Install Node.js LTS
+    log_section "Node.js Setup"
+    install_node_lts
 
     # Phase 5: Personal configuration
     mkdir -p "$SECRETS_DIR"
