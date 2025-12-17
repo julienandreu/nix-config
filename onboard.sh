@@ -655,6 +655,7 @@ setup_cursor() {
         "bradlc.vscode-tailwindcss"                  # Tailwind CSS
         "mikestead.dotenv"                           # DotENV
         "tamasfe.even-better-toml"                   # TOML
+        "eamodio.gitlens"                            # GitLens
     )
 
     # Check if cursor CLI is available
