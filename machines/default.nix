@@ -131,6 +131,23 @@
   };
 
   # ==========================================================================
+  # Launch Agents - Start applications at login
+  # ==========================================================================
+
+  # Start Karabiner Elements at login
+  launchd.user.agents.karabiner-elements = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/usr/bin/open"
+        "-a"
+        "Karabiner-Elements"
+      ];
+      RunAtLoad = true;
+      KeepAlive = false;
+    };
+  };
+
+  # ==========================================================================
   # Display Resolution - Auto-configured based on Mac model
   # ==========================================================================
   # Runs displayplacer to set "More Space" resolution for built-in display

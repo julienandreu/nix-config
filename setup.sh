@@ -775,6 +775,30 @@ apply_personal_config() {
 # Post-Install Setup
 # =============================================================================
 
+start_karabiner_elements() {
+    log_info "Starting Karabiner Elements..."
+    
+    # Check if Karabiner Elements is installed
+    if [[ ! -d "/Applications/Karabiner-Elements.app" ]]; then
+        log_warning "Karabiner Elements not found - it may not be installed yet"
+        return 0
+    fi
+    
+    # Check if Karabiner Elements is already running
+    if pgrep -f "Karabiner-Elements" > /dev/null; then
+        log_success "Karabiner Elements is already running"
+        return 0
+    fi
+    
+    # Start Karabiner Elements
+    if open -a "Karabiner-Elements" 2>/dev/null; then
+        log_success "Karabiner Elements started"
+    else
+        log_warning "Failed to start Karabiner Elements"
+        log_step "You can start it manually: open -a Karabiner-Elements"
+    fi
+}
+
 show_final_steps() {
     log_header "System Installation Complete"
 
@@ -894,6 +918,10 @@ main() {
             log_step "You can apply it later with: darwin-rebuild switch --flake .#mac --impure"
         fi
     fi
+
+    # Phase 6: Start Karabiner Elements
+    log_section "Starting Karabiner Elements"
+    start_karabiner_elements
 
     # Done - show summary and offer onboarding
     show_final_steps

@@ -146,7 +146,7 @@
   # Path: ~/Library/Application Support/Cursor/User/settings.json
   home.file."Library/Application Support/Cursor/User/settings.json" = {
     force = true;
-    text = builtins.toJSON {
+    text = builtins.toJSON ({
       # Catppuccin Theme
       # Requires extensions: Catppuccin.catppuccin-vsc + Catppuccin.catppuccin-vsc-icons
       # Theme names: "Catppuccin Latte", "Catppuccin Frappé", "Catppuccin Macchiato", "Catppuccin Mocha"
@@ -165,6 +165,86 @@
       "editor.fontFamily" = "'MesloLGL Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
       "editor.fontSize" = 12;
       "editor.fontLigatures" = true;
-    };
+
+      # Editor settings from colleague's configuration
+      "editor.codeActionsOnSave" = {
+        "source.fixAll.eslint" = "explicit";
+      };
+      "editor.formatOnSave" = true;
+      "editor.formatOnSaveMode" = "modifications";
+      "files.insertFinalNewline" = true;
+      "files.trimTrailingWhitespace" = true;
+
+      # JSON settings
+      "[json]" = {
+        "editor.defaultFormatter" = "esbenp.prettier-vscode";
+        "editor.quickSuggestions" = {
+          "strings" = true;
+        };
+        "editor.suggest.insertMode" = "replace";
+      };
+
+      # Markdown settings
+      "[markdown]" = {
+        "editor.defaultFormatter" = "esbenp.prettier-vscode";
+        "editor.unicodeHighlight.ambiguousCharacters" = false;
+        "editor.unicodeHighlight.invisibleCharacters" = false;
+        "diffEditor.ignoreTrimWhitespace" = false;
+        "editor.wordWrap" = "on";
+        "editor.quickSuggestions" = {
+          "comments" = "off";
+          "strings" = "off";
+          "other" = "off";
+        };
+      };
+
+      # TypeScript settings
+      "[typescript]" = {
+        "editor.defaultFormatter" = "esbenp.prettier-vscode";
+      };
+
+      # Python settings
+      "[python]" = {
+        "editor.defaultFormatter" = "charliermarsh.ruff";
+        "editor.formatOnSave" = true;
+        "editor.codeActionsOnSave" = {
+          "source.fixAll" = "explicit";
+          "source.organizeImports" = "explicit";
+        };
+      };
+
+      # Rust settings
+      "[rust]" = {
+        "editor.defaultFormatter" = "rust-lang.rust-analyzer";
+        "editor.formatOnSave" = true;
+      };
+
+      # Terraform settings
+      "[terraform]" = {
+        "editor.defaultFormatter" = "hashicorp.terraform";
+        "editor.formatOnSave" = true;
+      };
+      "[terraform-vars]" = {
+        "editor.defaultFormatter" = "hashicorp.terraform";
+        "editor.formatOnSave" = true;
+      };
+
+      # Nix settings
+      "[nix]" = {
+        "editor.formatOnSave" = true;
+      };
+
+      # YAML settings
+      "[yaml]" = {
+        "editor.defaultFormatter" = "redhat.vscode-yaml";
+        "editor.formatOnSave" = true;
+      };
+
+      # TOML settings
+      "[toml]" = {
+        "editor.defaultFormatter" = "tamasfe.even-better-toml";
+        "editor.formatOnSave" = true;
+      };
+    });
   };
 }
