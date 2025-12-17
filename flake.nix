@@ -72,8 +72,10 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              
               # Automatically backup existing files when home-manager activates
               # Files will be renamed with .backup extension (e.g., .zshrc -> .zshrc.backup)
+              # This prevents "would be clobbered" errors during activation
               home-manager.backupFileExtension = "backup";
 
               home-manager.extraSpecialArgs = { inherit username homeDirectory catppuccin; };

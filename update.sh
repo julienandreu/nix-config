@@ -145,8 +145,11 @@ rebuild_system() {
     # Clean up old backups before rebuild to ensure fresh generation
     cleanup_home_manager_backups
     
+    # Set environment variable to allow home-manager to overwrite existing backup files
+    export HOME_MANAGER_BACKUP_OVERWRITE=1
+    
     log_info "Rebuilding configuration (requires sudo)..."
-    sudo FLAKE_DIR="$SCRIPT_DIR" darwin-rebuild switch --flake "$FLAKE" --impure
+    sudo -E FLAKE_DIR="$SCRIPT_DIR" darwin-rebuild switch --flake "$FLAKE" --impure
     log_success "System rebuilt and activated"
 }
 

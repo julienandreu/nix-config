@@ -412,13 +412,88 @@ cleanup_home_manager_backups() {
     fi
 }
 
-activate_system() {
-    # Clean up old backups before activation to ensure fresh generation
-    cleanup_home_manager_backups
+backup_critical_files() {
+    log_info "Backing up critical configuration files..."
     
+    # List of files that home-manager will manage and need backup
+    local critical_files=(
+        "$HOME/.zshrc"
+        "$HOME/.zshenv"
+        "$HOME/.zprofile"
+    )
+    
+    local backed_up=0
+    for file in "${critical_files[@]}"; do
+        if [[ -f "$file" ]] && [[ ! -f "${file}.backup" ]]; then
+            cp "$file" "${file}.backup"
+            ((backed_up++))
+        fi
+    done
+    
+    if [[ $backed_up -gt 0 ]]; then
+        log_success "Backed up $backed_up file(s)"
+    fi
+}
+
+activate_system() {
     log_info "Activating system (requires sudo)..."
-    sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure
-    log_success "System activated"
+    
+    # Set environment variable to allow home-manager to overwrite existing backup files
+    # This ensures backupFileExtension works even if backup files from previous runs exist
+    export HOME_MANAGER_BACKUP_OVERWRITE=1
+    
+    # Remove any nested backup files (.backup.backup) that might cause issues
+    find "$HOME" -maxdepth 1 -name "*.backup.backup" -type f 2>/dev/null | while read -r backup; do
+        rm -f "$backup"
+    done
+    
+    # Try activation - home-manager should create backups via backupFileExtension
+    # HOME_MANAGER_BACKUP_OVERWRITE allows overwriting existing backups if needed
+    local rebuild_output
+    rebuild_output=$(mktemp)
+    if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure 2>&1 | tee "$rebuild_output"; then
+        rm -f "$rebuild_output"
+        log_success "System activated"
+        return 0
+    fi
+    
+    # Check if failure was due to file conflicts
+    if grep -q "would be clobbered" "$rebuild_output" 2>/dev/null; then
+        log_warning "File conflicts detected - home-manager backup mechanism may not be working"
+        log_info "Attempting workaround: temporarily moving conflicting files..."
+        
+        # For files that would be clobbered, move them out of the way
+        # home-manager will create fresh ones, and user can merge manually if needed
+        local moved_files=()
+        for file in "${critical_files[@]}"; do
+            if grep -q "$(basename "$file")" "$rebuild_output" 2>/dev/null; then
+                if [[ -f "$file" ]]; then
+                    local backup_name="${file}.backup.manual"
+                    log_info "Moving $(basename "$file") to $backup_name..."
+                    mv "$file" "$backup_name"
+                    moved_files+=("$backup_name")
+                fi
+            fi
+        done
+        
+        # Retry activation
+        log_info "Retrying activation with files moved out of the way..."
+        if sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure; then
+            log_success "System activated"
+            if [[ ${#moved_files[@]} -gt 0 ]]; then
+                log_warning "Some files were moved to .backup.manual - you may want to merge them manually"
+            fi
+            rm -f "$rebuild_output"
+            return 0
+        fi
+    fi
+    
+    rm -f "$rebuild_output"
+    log_error "System activation failed"
+    log_step "Check the error messages above for details"
+    log_step "You may need to manually resolve file conflicts"
+    log_step "Or run: darwin-rebuild switch --flake .#mac --impure"
+    return 1
 }
 
 install_node_lts() {
@@ -605,8 +680,17 @@ EOF
 
 apply_personal_config() {
     log_info "Applying configuration with your personal settings..."
-    sudo FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$SCRIPT_DIR#mac" --impure
-    log_success "Personal configuration applied"
+
+    # Set environment variable to allow home-manager to overwrite existing backup files
+    export HOME_MANAGER_BACKUP_OVERWRITE=1
+
+    if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$SCRIPT_DIR#mac" --impure; then
+        log_success "Personal configuration applied"
+    else
+        log_error "Failed to apply personal configuration"
+        log_step "You may need to manually resolve file conflicts"
+        return 1
+    fi
 }
 
 # =============================================================================
@@ -702,11 +786,16 @@ main() {
     # Phase 4: Build and activate system
     log_section "Building System"
     build_system
-    activate_system
+    
+    # Activate system - continue even if there are file conflicts
+    if ! activate_system; then
+        log_warning "System activation had issues, but continuing setup..."
+        log_step "You may need to manually resolve file conflicts later"
+    fi
 
     # Phase 4.5: Install Node.js LTS
     log_section "Node.js Setup"
-    install_node_lts
+    install_node_lts || log_warning "Node.js LTS installation skipped or failed"
 
     # Phase 5: Personal configuration
     mkdir -p "$SECRETS_DIR"
@@ -720,12 +809,27 @@ main() {
         setup_git_config
         setup_ssh_key
         create_secrets_file
-        apply_personal_config
+        
+        # Apply personal config - continue even if there are issues
+        if ! apply_personal_config; then
+            log_warning "Personal configuration had issues, but continuing setup..."
+            log_step "You can apply it later with: darwin-rebuild switch --flake .#mac --impure"
+        fi
     fi
 
     # Done - show summary and offer onboarding
     show_final_steps
     run_onboarding
+
+    # Final prompt to launch shell
+    echo ""
+    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    read -rp "   You're all done with the install, press enter to launch your shell... " _
+    echo ""
+    
+    # Launch shell (use exec to replace current process)
+    exec zsh
 }
 
 main "$@"
