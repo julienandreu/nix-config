@@ -344,28 +344,49 @@ prompt_catppuccin_flavor() {
     log_section "Catppuccin Theme Selection"
     echo ""
     log_info "Choose your Catppuccin flavor:"
-    echo "  1) 🌻 Latte (light)"
-    echo "  2) 🪴 Frappé (medium-dark)"
-    echo "  3) 🌺 Macchiato (dark)"
-    echo "  4) 🌿 Mocha (darkest)"
+    echo ""
+    echo "  🌻  1) Latte      - Light theme"
+    echo "  🪴  2) Frappé     - Medium-dark theme"
+    echo "  🌺  3) Macchiato  - Dark theme"
+    echo "  🌿  4) Mocha      - Darkest theme (recommended)"
     echo ""
     
     local flavor
     while true; do
         local choice
-        choice=$(prompt_with_default "Select flavor (1-4)" "4")
+        echo -e "${CYAN}   Enter your choice [1=Latte, 2=Frappé, 3=Macchiato, 4=Mocha]${RESET}"
+        read -rp "   → " choice
+        choice="${choice:-4}"  # Default to 4 if empty
         
         case "$choice" in
-            1) flavor="latte"; break ;;
-            2) flavor="frappe"; break ;;
-            3) flavor="macchiato"; break ;;
-            4) flavor="mocha"; break ;;
+            1)
+                flavor="latte"
+                log_success "Selected: 🌻 Latte (light theme)"
+                break
+                ;;
+            2)
+                flavor="frappe"
+                log_success "Selected: 🪴 Frappé (medium-dark theme)"
+                break
+                ;;
+            3)
+                flavor="macchiato"
+                log_success "Selected: 🌺 Macchiato (dark theme)"
+                break
+                ;;
+            4)
+                flavor="mocha"
+                log_success "Selected: 🌿 Mocha (darkest theme)"
+                break
+                ;;
             *)
-                log_warning "Invalid choice. Please enter 1, 2, 3, or 4."
+                log_warning "Invalid choice '$choice'. Please enter 1, 2, 3, or 4."
+                echo ""
                 ;;
         esac
     done
     
+    echo ""
     echo "$flavor"
 }
 
