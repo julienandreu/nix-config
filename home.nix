@@ -5,6 +5,7 @@
   username,
   homeDirectory,
   catppuccin,
+  catppuccinFlavor,
   ...
 }:
 

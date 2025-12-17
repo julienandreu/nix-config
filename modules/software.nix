@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, catppuccinFlavor, ... }:
 
 {
   home.packages = with pkgs; [
@@ -72,7 +72,6 @@
         dark = true;
         line-numbers = true;
         side-by-side = false; # set to true for side-by-side view
-        syntax-theme = "Catppuccin Mocha";
       };
       merge.conflictstyle = "zdiff3";
       diff.colorMoved = "default";
@@ -84,6 +83,12 @@
         ci = "commit";
         lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
       };
+    };
+
+    # Catppuccin theme integration for delta (used as git pager)
+    delta.catppuccin = {
+      enable = true;
+      flavor = catppuccinFlavor;
     };
   };
 
@@ -147,10 +152,15 @@
   home.file."Library/Application Support/Cursor/User/settings.json" = {
     force = true;
     text = builtins.toJSON {
-      # Catppuccin Mocha Theme
+      # Catppuccin Theme
       # Requires extensions: Catppuccin.catppuccin-vsc + Catppuccin.catppuccin-vsc-icons
-      "workbench.colorTheme" = "Catppuccin Mocha";
-      "workbench.iconTheme" = "catppuccin-mocha";
+      # Theme names: "Catppuccin Latte", "Catppuccin Frappé", "Catppuccin Macchiato", "Catppuccin Mocha"
+      "workbench.colorTheme" = 
+        if catppuccinFlavor == "latte" then "Catppuccin Latte"
+        else if catppuccinFlavor == "frappe" then "Catppuccin Frappé"
+        else if catppuccinFlavor == "macchiato" then "Catppuccin Macchiato"
+        else "Catppuccin Mocha";
+      "workbench.iconTheme" = "catppuccin-${catppuccinFlavor}";
 
       # Font settings
       "terminal.integrated.fontFamily" = "'MesloLGL Nerd Font Mono', 'FiraCode Nerd Font Mono', 'Fira Code'";
