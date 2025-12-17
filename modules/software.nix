@@ -84,12 +84,7 @@
         lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
       };
     };
-
-    # Catppuccin theme integration for delta (used as git pager)
-    delta.catppuccin = {
-      enable = true;
-      flavor = catppuccinFlavor;
-    };
+    # Catppuccin theme for delta is configured via catppuccin.delta module in theme.nix
   };
 
   # SSH configuration with connection sharing for faster Git operations
