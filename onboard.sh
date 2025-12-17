@@ -93,11 +93,79 @@ confirm_step() {
 }
 
 # =============================================================================
+# Detection Functions - Check if steps are already completed
+# =============================================================================
+
+is_chrome_configured() {
+    # Check if Chrome is set as default browser
+    defaults read com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers 2>/dev/null | grep -q "com.google.chrome" || return 1
+    # Check if Chrome is installed
+    [[ -d "/Applications/Google Chrome.app" ]] || return 1
+}
+
+is_github_configured() {
+    # Check if GitHub CLI is authenticated
+    command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1
+}
+
+is_ssh_key_configured() {
+    # Check if SSH key exists and is added to GitHub
+    [[ -f "$SSH_KEY_PATH" ]] || return 1
+    # Test SSH connection to GitHub
+    ssh -T git@github.com -o StrictHostKeyChecking=no -o ConnectTimeout=5 &>/dev/null
+}
+
+is_1password_configured() {
+    # Check if 1Password is installed and running
+    [[ -d "/Applications/1Password.app" ]] && pgrep -f "1Password" >/dev/null 2>&1
+}
+
+is_aws_console_configured() {
+    # Check if AWS credentials directory exists (indicates AWS Console has been used)
+    [[ -d "$HOME/.aws" ]] && [[ -f "$HOME/.aws/credentials" || -f "$HOME/.aws/config" ]]
+}
+
+is_aws_cli_configured() {
+    # Check if AWS CLI is configured and can list identities
+    command -v aws &>/dev/null && aws sts get-caller-identity &>/dev/null 2>&1
+}
+
+is_cursor_configured() {
+    # Check if Cursor is installed and has extensions installed
+    local cursor_cli="/Applications/Cursor.app/Contents/Resources/app/bin/cursor"
+    [[ -x "$cursor_cli" ]] || return 1
+    # Check if at least some expected extensions are installed
+    local ext_count
+    ext_count=$("$cursor_cli" --list-extensions 2>/dev/null | wc -l | tr -d ' ')
+    [[ $ext_count -gt 0 ]]
+}
+
+is_linear_configured() {
+    # Check if Linear is installed
+    [[ -d "/Applications/Linear.app" ]]
+}
+
+is_slack_configured() {
+    # Check if Slack is installed
+    [[ -d "/Applications/Slack.app" ]]
+}
+
+# =============================================================================
 # Step 1: Google Chrome Setup
 # =============================================================================
 
 setup_chrome() {
     log_step_header "1" "Google Chrome - Default Browser & Account Setup"
+
+    # Check if already configured
+    if is_chrome_configured; then
+        log_success "Chrome appears to be already configured!"
+        log_info "Chrome is set as default browser and installed."
+        if ! confirm_step "Do you want to reconfigure Chrome?"; then
+            log_info "Skipping Chrome setup"
+            return 0
+        fi
+    fi
 
     log_info "Google Chrome will be configured as your default browser."
     log_info "You'll sign in with your Saris Google account."
@@ -148,6 +216,15 @@ setup_chrome() {
 
 setup_github() {
     log_step_header "2" "GitHub - Web Login & CLI Authentication"
+
+    # Check if already configured
+    if is_github_configured; then
+        log_success "GitHub CLI appears to be already authenticated!"
+        if ! confirm_step "Do you want to re-authenticate GitHub?"; then
+            log_info "Skipping GitHub setup"
+            return 0
+        fi
+    fi
 
     log_info "You'll sign into GitHub via the web browser first,"
     log_info "then authenticate the GitHub CLI (gh) for terminal access."
@@ -203,6 +280,16 @@ setup_github() {
 
 setup_ssh_key() {
     log_step_header "3" "SSH Key - Generate & Add to GitHub"
+
+    # Check if already configured
+    if is_ssh_key_configured; then
+        log_success "SSH key appears to be already configured and working!"
+        log_info "SSH key exists and GitHub connection is working."
+        if ! confirm_step "Do you want to regenerate or reconfigure SSH key?"; then
+            log_info "Skipping SSH key setup"
+            return 0
+        fi
+    fi
 
     log_info "An SSH key provides secure authentication for Git operations."
     echo ""
@@ -361,6 +448,16 @@ test_private_repo() {
 setup_1password() {
     log_step_header "4" "1Password - Password Manager Setup"
 
+    # Check if already configured
+    if is_1password_configured; then
+        log_success "1Password appears to be already configured!"
+        log_info "1Password is installed and running."
+        if ! confirm_step "Do you want to reconfigure 1Password?"; then
+            log_info "Skipping 1Password setup"
+            return 0
+        fi
+    fi
+
     log_info "1Password is your secure password manager."
     log_info "You'll sign in with your Google account."
     echo ""
@@ -394,6 +491,16 @@ setup_1password() {
 
 setup_aws_console() {
     log_step_header "5" "AWS Console - Sign In & 2FA Setup"
+
+    # Check if already configured
+    if is_aws_console_configured; then
+        log_success "AWS Console appears to be already configured!"
+        log_info "AWS credentials directory exists."
+        if ! confirm_step "Do you want to reconfigure AWS Console?"; then
+            log_info "Skipping AWS Console setup"
+            return 0
+        fi
+    fi
 
     log_info "You'll sign into AWS Console and set up 2FA for security."
     echo ""
@@ -437,12 +544,11 @@ setup_aws_cli() {
     fi
 
     # Check if already configured
-    if [[ -f "$HOME/.aws/credentials" ]] && grep -q "aws_access_key_id" "$HOME/.aws/credentials"; then
-        log_success "AWS CLI credentials already configured"
-        echo ""
-
+    if is_aws_cli_configured; then
+        log_success "AWS CLI appears to be already configured and working!"
+        log_info "AWS CLI can authenticate successfully."
         if ! confirm_step "Would you like to reconfigure AWS credentials?"; then
-            log_success "Step 6 complete: AWS CLI is configured!"
+            log_info "Skipping AWS CLI setup"
             return 0
         fi
     fi
@@ -487,6 +593,16 @@ setup_aws_cli() {
 
 setup_cursor() {
     log_step_header "7" "Cursor - AI Code Editor Setup"
+
+    # Check if already configured
+    if is_cursor_configured; then
+        log_success "Cursor appears to be already configured!"
+        log_info "Cursor is installed and has extensions installed."
+        if ! confirm_step "Do you want to reconfigure Cursor or reinstall extensions?"; then
+            log_info "Skipping Cursor setup"
+            return 0
+        fi
+    fi
 
     log_info "Cursor is your AI-powered code editor."
     log_info "You'll sign in with your Google account."
@@ -576,6 +692,16 @@ setup_cursor() {
 setup_linear() {
     log_step_header "8" "Linear - Project Management Setup"
 
+    # Check if already configured
+    if is_linear_configured; then
+        log_success "Linear appears to be already installed!"
+        log_info "Linear application is installed."
+        if ! confirm_step "Do you want to reconfigure Linear?"; then
+            log_info "Skipping Linear setup"
+            return 0
+        fi
+    fi
+
     log_info "Linear is your project and issue tracking tool."
     log_info "You'll sign in with your Google account."
     echo ""
@@ -608,6 +734,16 @@ setup_linear() {
 
 setup_slack() {
     log_step_header "9" "Slack - Team Communication Setup"
+
+    # Check if already configured
+    if is_slack_configured; then
+        log_success "Slack appears to be already installed!"
+        log_info "Slack application is installed."
+        if ! confirm_step "Do you want to reconfigure Slack?"; then
+            log_info "Skipping Slack setup"
+            return 0
+        fi
+    fi
 
     log_info "Slack is your team communication platform."
     log_info "You'll sign in with your Google account."
@@ -687,17 +823,88 @@ main() {
     log_info "This script will guide you through setting up all your applications."
     log_info "Each step builds on the previous one, so please complete them in order."
     echo ""
-    log_info "You'll be setting up:"
-    log_step "1. Google Chrome (default browser + account sync)"
-    log_step "2. GitHub (web login + CLI authentication)"
-    log_step "3. SSH Key (for secure Git access)"
-    log_step "4. 1Password (password manager)"
-    log_step "5. AWS Console (cloud access + 2FA)"
-    log_step "6. AWS CLI (command line tools)"
-    log_step "7. Cursor (AI code editor)"
-    log_step "8. Linear (project management)"
-    log_step "9. Slack (team communication)"
-    echo ""
+
+    # Check what's already configured
+    local configured_steps=()
+    local pending_steps=()
+
+    if is_chrome_configured; then
+        configured_steps+=("1. Google Chrome ✓")
+    else
+        pending_steps+=("1. Google Chrome (default browser + account sync)")
+    fi
+
+    if is_github_configured; then
+        configured_steps+=("2. GitHub ✓")
+    else
+        pending_steps+=("2. GitHub (web login + CLI authentication)")
+    fi
+
+    if is_ssh_key_configured; then
+        configured_steps+=("3. SSH Key ✓")
+    else
+        pending_steps+=("3. SSH Key (for secure Git access)")
+    fi
+
+    if is_1password_configured; then
+        configured_steps+=("4. 1Password ✓")
+    else
+        pending_steps+=("4. 1Password (password manager)")
+    fi
+
+    if is_aws_console_configured; then
+        configured_steps+=("5. AWS Console ✓")
+    else
+        pending_steps+=("5. AWS Console (cloud access + 2FA)")
+    fi
+
+    if is_aws_cli_configured; then
+        configured_steps+=("6. AWS CLI ✓")
+    else
+        pending_steps+=("6. AWS CLI (command line tools)")
+    fi
+
+    if is_cursor_configured; then
+        configured_steps+=("7. Cursor ✓")
+    else
+        pending_steps+=("7. Cursor (AI code editor)")
+    fi
+
+    if is_linear_configured; then
+        configured_steps+=("8. Linear ✓")
+    else
+        pending_steps+=("8. Linear (project management)")
+    fi
+
+    if is_slack_configured; then
+        configured_steps+=("9. Slack ✓")
+    else
+        pending_steps+=("9. Slack (team communication)")
+    fi
+
+    # Show status summary
+    if [[ ${#configured_steps[@]} -gt 0 ]]; then
+        log_success "Already configured (${#configured_steps[@]}/9):"
+        for step in "${configured_steps[@]}"; do
+            log_step "$step"
+        done
+        echo ""
+    fi
+
+    if [[ ${#pending_steps[@]} -gt 0 ]]; then
+        log_info "Pending setup (${#pending_steps[@]}/9):"
+        for step in "${pending_steps[@]}"; do
+            log_step "$step"
+        done
+        echo ""
+    else
+        log_success "All steps are already configured!"
+        echo ""
+        if ! confirm_step "Do you want to reconfigure any steps?"; then
+            log_info "Onboarding complete. Exiting."
+            exit 0
+        fi
+    fi
 
     if ! confirm_step "Ready to begin?"; then
         log_info "Onboarding cancelled. Run this script again when ready."
