@@ -191,11 +191,73 @@ uninstall_single_user_nix() {
         nix_owner=$(stat -f "%Su" /nix 2>/dev/null || echo "")
         if [[ "$nix_owner" != "root" ]]; then
             log_info "Removing /nix directory (requires sudo)..."
-            sudo rm -rf /nix
+            
+            # Check if /nix is a volume mount (macOS installer creates it as a volume)
+            local mount_info
+            mount_info=$(mount | grep "on /nix" || true)
+            if [[ -n "$mount_info" ]]; then
+                log_info "Unmounting /nix volume..."
+                # Try diskutil first (macOS-specific)
+                sudo diskutil unmount force /nix 2>/dev/null || \
+                sudo diskutil unmount /nix 2>/dev/null || \
+                sudo umount -f /nix 2>/dev/null || \
+                sudo umount /nix 2>/dev/null || true
+                # Wait a moment for unmount to complete
+                sleep 1
+            fi
+            
+            # Stop any Nix processes that might be using /nix
+            if command -v nix-daemon &>/dev/null; then
+                sudo launchctl unload /Library/LaunchDaemons/org.nixos.nix-daemon.plist 2>/dev/null || true
+                sudo launchctl unload /Library/LaunchDaemons/com.nixos.nix-daemon.plist 2>/dev/null || true
+            fi
+            
+            # Kill any nix processes
+            sudo pkill -9 nix-daemon 2>/dev/null || true
+            sudo pkill -9 nix 2>/dev/null || true
+            
+            # Wait a moment for processes to terminate
+            sleep 2
+            
+            # Remove .Trashes directory if it exists (macOS creates this automatically)
+            if [[ -d "/nix/.Trashes" ]]; then
+                sudo rm -rf /nix/.Trashes 2>/dev/null || true
+            fi
+            
+            # Try to remove /nix directory
+            # Use a more forceful approach: remove contents first, then directory
+            # Remove visible files first
+            sudo find /nix -mindepth 1 -maxdepth 1 ! -name '.Trashes' -exec rm -rf {} + 2>/dev/null || true
+            # Remove .Trashes if it still exists
+            sudo rm -rf /nix/.Trashes 2>/dev/null || true
+            # Try to remove hidden files/directories (but not . and ..)
+            sudo find /nix -mindepth 1 -maxdepth 1 -name '.*' ! -name '.' ! -name '..' -exec rm -rf {} + 2>/dev/null || true
+            
+            # Try to remove the directory itself
+            if sudo rmdir /nix 2>/dev/null || sudo rm -rf /nix 2>/dev/null; then
+                log_success "/nix directory removed"
+            else
+                # Check if directory still exists
+                if [[ -d "/nix" ]]; then
+                    log_warning "Could not fully remove /nix directory (may be in use)"
+                    log_step "Checking for processes using /nix..."
+                    if command -v lsof &>/dev/null; then
+                        sudo lsof +D /nix 2>/dev/null | head -20 || true
+                    fi
+                    log_step "You may need to:"
+                    log_step "  1. Close all terminal windows and applications"
+                    log_step "  2. Restart your computer"
+                    log_step "  3. Run this script again"
+                    log_step "Or manually remove /nix after ensuring no processes are using it"
+                    # Continue anyway - multi-user installer might handle it
+                else
+                    log_success "/nix directory removed"
+                fi
+            fi
         fi
     fi
     
-    log_success "Single-user Nix installation removed"
+    log_success "Single-user Nix installation cleanup completed"
 }
 
 install_nix() {
