@@ -134,14 +134,10 @@
   # Launch Agents - Start applications at login
   # ==========================================================================
 
-  # Start Karabiner Elements at login
+  # Start Karabiner Elements at login as a background service
+  # Uses -j flag to launch hidden (without showing the window)
   launchd.user.agents.karabiner-elements = {
     serviceConfig = {
-      ProgramArguments = [
-        "/usr/bin/open"
-        "-a"
-        "Karabiner-Elements"
-      ];
       RunAtLoad = true;
       KeepAlive = false;
     };

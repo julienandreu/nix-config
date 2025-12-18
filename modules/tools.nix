@@ -128,10 +128,31 @@
       show_profile_name_in_menu_bar = false;
     };
     profiles = [
-        # Disable built-in keyboard when any external keyboard is connected
         {
-          disable_built_in_keyboard_if_exists = true;
-          devices = [ ];
+          # Profile name
+          name = "Default profile";
+          selected = true;
+
+          # Device-specific configuration for Planck EZ Glow (ZSA Technology Labs)
+          devices = [
+            {
+              identifiers = {
+                vendor_id = 12951;  # 0x3297
+                product_id = 50895; # 0xc6cf
+                is_keyboard = true;
+                is_pointing_device = false;
+              };
+              # Modify events: enabled
+              modify_events = true;
+              # Disable the built-in keyboard while this device is connected: enabled
+              disable_built_in_keyboard_if_exists = true;
+              # Manipulate caps lock LED: enabled
+              manipulate_caps_lock_led = true;
+              # Ignore vendor events: disabled (not recommended for non-Apple devices, but as per user config)
+              ignore_vendor_events = false;
+            }
+          ];
+
           fn_function_keys = [ ];
           simple_modifications = [ ];
           virtual_hid_keyboard = {
