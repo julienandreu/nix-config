@@ -645,6 +645,7 @@ setup_cursor() {
         # Code Quality & Formatting
         "dbaeumer.vscode-eslint"                     # ESLint
         "esbenp.prettier-vscode"                     # Prettier
+        "EditorConfig.EditorConfig"                  # EditorConfig
 
         # Productivity
         "wayou.vscode-todo-highlight"                # TODO Highlight
