@@ -80,6 +80,7 @@
         format = "[[($all_status$ahead_behind )](fg:base bg:green)]($style)";
         ignore_submodules = true;
         use_git_executable = true;
+        untracked = "";
       };
 
 
