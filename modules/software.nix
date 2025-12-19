@@ -55,13 +55,13 @@
       # Pack/compression performance
       pack.threads = 0; # Use all CPU cores for packing
 
-      # Optional: Skip expensive checks (uncomment if needed)
-      # status.aheadBehind = false;  # Skip ahead/behind calculation with remote
-      # diff.ignoreSubmodules = "dirty";  # Skip checking submodule working trees
+      # Performance: Skip expensive checks for faster git_status in Starship
+      status.aheadBehind = false;  # Skip ahead/behind calculation with remote (saves network/commit-graph queries)
+      diff.ignoreSubmodules = "dirty";  # Skip checking clean submodule working trees
 
       # Diff settings
       diff.algorithm = "histogram";
-      status.showUntrackedFiles = "normal";
+      status.showUntrackedFiles = "no";  # Skip untracked file scanning (biggest performance win for Starship)
       log.decorate = "short";
 
       # Delta - syntax-highlighted diffs
@@ -150,7 +150,7 @@
       # Catppuccin Theme
       # Requires extensions: Catppuccin.catppuccin-vsc + Catppuccin.catppuccin-vsc-icons
       # Theme names: "Catppuccin Latte", "Catppuccin Frappé", "Catppuccin Macchiato", "Catppuccin Mocha"
-      "workbench.colorTheme" = 
+      "workbench.colorTheme" =
         if catppuccinFlavor == "latte" then "Catppuccin Latte"
         else if catppuccinFlavor == "frappe" then "Catppuccin Frappé"
         else if catppuccinFlavor == "macchiato" then "Catppuccin Macchiato"
