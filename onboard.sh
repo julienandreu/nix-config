@@ -40,7 +40,7 @@ log_header() {
 log_step_header() {
     local step_num="$1"
     local step_title="$2"
-    local total_steps="${3:-9}"
+    local total_steps="${3:-10}"
     echo ""
     echo -e "${BOLD}${MAGENTA}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
     echo -e "${BOLD}${MAGENTA}┃  Step ${step_num}/${total_steps}: ${step_title}${RESET}"
@@ -148,6 +148,25 @@ is_linear_configured() {
 is_slack_configured() {
     # Check if Slack is installed
     [[ -d "/Applications/Slack.app" ]]
+}
+
+is_claude_code_configured() {
+    # Check if Claude Code is installed and has API key configured
+    command -v claude &>/dev/null || return 1
+    # Check if ANTHROPIC_API_KEY is set in shell config or environment
+    [[ -n "${ANTHROPIC_API_KEY:-}" ]] || grep -q "ANTHROPIC_API_KEY" "$HOME/.zshrc" 2>/dev/null || grep -q "ANTHROPIC_API_KEY" "$HOME/.config/nix-config/local/secrets.nix" 2>/dev/null
+}
+
+is_codex_configured() {
+    # Check if Codex is installed and has API key configured
+    command -v codex &>/dev/null || return 1
+    # Check if OPENAI_API_KEY is set in shell config or environment
+    [[ -n "${OPENAI_API_KEY:-}" ]] || grep -q "OPENAI_API_KEY" "$HOME/.zshrc" 2>/dev/null || grep -q "OPENAI_API_KEY" "$HOME/.config/nix-config/local/secrets.nix" 2>/dev/null
+}
+
+is_ai_assistants_configured() {
+    # Check if both AI coding assistants are configured
+    is_claude_code_configured && is_codex_configured
 }
 
 # =============================================================================
@@ -776,6 +795,199 @@ setup_slack() {
 }
 
 # =============================================================================
+# Step 10: AI Coding Assistants Setup
+# =============================================================================
+
+setup_ai_assistants() {
+    log_step_header "10" "AI Coding Assistants - Claude Code & Codex Setup" 10
+
+    # Check if already configured
+    if is_ai_assistants_configured; then
+        log_success "AI coding assistants appear to be already configured!"
+        log_info "Both Claude Code and Codex have API keys configured."
+        if ! confirm_step "Do you want to reconfigure the AI assistants?"; then
+            log_info "Skipping AI assistants setup"
+            return 0
+        fi
+    fi
+
+    log_info "AI coding assistants help you write code faster with AI."
+    log_info "You'll need API keys from Anthropic and OpenAI."
+    echo ""
+
+    # -------------------------------------------------------------------------
+    # Claude Code Setup
+    # -------------------------------------------------------------------------
+    echo -e "${BOLD}${CYAN}Claude Code (Anthropic)${RESET}"
+    echo ""
+
+    if ! command -v claude &>/dev/null; then
+        log_warning "Claude Code CLI not found. Run 'home-manager switch' first."
+    else
+        log_success "Claude Code CLI is installed"
+
+        if is_claude_code_configured; then
+            log_success "Claude Code appears to be already configured"
+            if ! confirm_step "Reconfigure Claude Code?"; then
+                log_info "Keeping existing Claude Code configuration"
+            else
+                setup_claude_code_auth
+            fi
+        else
+            setup_claude_code_auth
+        fi
+    fi
+
+    echo ""
+
+    # -------------------------------------------------------------------------
+    # OpenAI Codex Setup
+    # -------------------------------------------------------------------------
+    echo -e "${BOLD}${CYAN}OpenAI Codex${RESET}"
+    echo ""
+
+    if ! command -v codex &>/dev/null; then
+        log_warning "Codex CLI not found. Run 'home-manager switch' first."
+    else
+        log_success "Codex CLI is installed"
+
+        if is_codex_configured; then
+            log_success "Codex appears to be already configured"
+            if ! confirm_step "Reconfigure Codex?"; then
+                log_info "Keeping existing Codex configuration"
+            else
+                setup_codex_auth
+            fi
+        else
+            setup_codex_auth
+        fi
+    fi
+
+    echo ""
+    log_success "Step 10 complete: AI coding assistants are configured!"
+}
+
+setup_claude_code_auth() {
+    log_info "To use Claude Code, you need an Anthropic API key."
+    echo ""
+    log_step "1. Go to ${BOLD}https://console.anthropic.com/settings/keys${RESET}"
+    log_step "2. Sign in or create an Anthropic account"
+    log_step "3. Click ${BOLD}'Create Key'${RESET}"
+    log_step "4. Copy the API key"
+    echo ""
+
+    log_action "Opening Anthropic Console..."
+    open "https://console.anthropic.com/settings/keys"
+
+    wait_for_user "Press Enter when you have your Anthropic API key..."
+
+    echo ""
+    read -rsp "   Paste your ANTHROPIC_API_KEY (input hidden): " api_key
+    echo ""
+
+    if [[ -n "$api_key" ]]; then
+        # Add to secrets file for persistence
+        local secrets_dir="$HOME/.config/nix-config/local"
+        mkdir -p "$secrets_dir"
+
+        # Check if secrets.nix exists and has the variable
+        if [[ -f "$secrets_dir/secrets.nix" ]]; then
+            if grep -q "ANTHROPIC_API_KEY" "$secrets_dir/secrets.nix"; then
+                log_info "Updating existing ANTHROPIC_API_KEY in secrets.nix"
+                sed -i '' "s|ANTHROPIC_API_KEY = \".*\"|ANTHROPIC_API_KEY = \"$api_key\"|" "$secrets_dir/secrets.nix"
+            else
+                log_info "Adding ANTHROPIC_API_KEY to secrets.nix"
+                # Add before the closing brace
+                sed -i '' '/^}$/i\
+  home.sessionVariables.ANTHROPIC_API_KEY = "'"$api_key"'";
+' "$secrets_dir/secrets.nix"
+            fi
+        else
+            log_warning "secrets.nix not found. Adding to .zshrc instead."
+            echo "" >> "$HOME/.zshrc"
+            echo "# Claude Code API Key" >> "$HOME/.zshrc"
+            echo "export ANTHROPIC_API_KEY=\"$api_key\"" >> "$HOME/.zshrc"
+        fi
+
+        # Export for current session
+        export ANTHROPIC_API_KEY="$api_key"
+        log_success "Anthropic API key configured"
+
+        # Test the configuration
+        log_action "Testing Claude Code..."
+        if claude --version &>/dev/null; then
+            log_success "Claude Code is ready to use!"
+            log_step "Run ${CYAN}claude${RESET} to start"
+        else
+            log_warning "Claude Code installed but couldn't verify. Try running 'claude' manually."
+        fi
+    else
+        log_warning "No API key provided. You can configure it later."
+        log_step "Set ANTHROPIC_API_KEY in your environment or secrets.nix"
+    fi
+}
+
+setup_codex_auth() {
+    log_info "To use Codex, you need an OpenAI API key."
+    echo ""
+    log_step "1. Go to ${BOLD}https://platform.openai.com/api-keys${RESET}"
+    log_step "2. Sign in or create an OpenAI account"
+    log_step "3. Click ${BOLD}'Create new secret key'${RESET}"
+    log_step "4. Copy the API key"
+    echo ""
+
+    log_action "Opening OpenAI Platform..."
+    open "https://platform.openai.com/api-keys"
+
+    wait_for_user "Press Enter when you have your OpenAI API key..."
+
+    echo ""
+    read -rsp "   Paste your OPENAI_API_KEY (input hidden): " api_key
+    echo ""
+
+    if [[ -n "$api_key" ]]; then
+        # Add to secrets file for persistence
+        local secrets_dir="$HOME/.config/nix-config/local"
+        mkdir -p "$secrets_dir"
+
+        # Check if secrets.nix exists and has the variable
+        if [[ -f "$secrets_dir/secrets.nix" ]]; then
+            if grep -q "OPENAI_API_KEY" "$secrets_dir/secrets.nix"; then
+                log_info "Updating existing OPENAI_API_KEY in secrets.nix"
+                sed -i '' "s|OPENAI_API_KEY = \".*\"|OPENAI_API_KEY = \"$api_key\"|" "$secrets_dir/secrets.nix"
+            else
+                log_info "Adding OPENAI_API_KEY to secrets.nix"
+                # Add before the closing brace
+                sed -i '' '/^}$/i\
+  home.sessionVariables.OPENAI_API_KEY = "'"$api_key"'";
+' "$secrets_dir/secrets.nix"
+            fi
+        else
+            log_warning "secrets.nix not found. Adding to .zshrc instead."
+            echo "" >> "$HOME/.zshrc"
+            echo "# OpenAI Codex API Key" >> "$HOME/.zshrc"
+            echo "export OPENAI_API_KEY=\"$api_key\"" >> "$HOME/.zshrc"
+        fi
+
+        # Export for current session
+        export OPENAI_API_KEY="$api_key"
+        log_success "OpenAI API key configured"
+
+        # Test the configuration
+        log_action "Testing Codex..."
+        if codex --version &>/dev/null; then
+            log_success "Codex is ready to use!"
+            log_step "Run ${CYAN}codex${RESET} to start"
+        else
+            log_warning "Codex installed but couldn't verify. Try running 'codex' manually."
+        fi
+    else
+        log_warning "No API key provided. You can configure it later."
+        log_step "Set OPENAI_API_KEY in your environment or secrets.nix"
+    fi
+}
+
+# =============================================================================
 # Completion
 # =============================================================================
 
@@ -797,6 +1009,7 @@ show_completion() {
     log_step "✓ Cursor - AI code editor ready"
     log_step "✓ Linear - Project management connected"
     log_step "✓ Slack - Team communication active"
+    log_step "✓ AI Assistants - Claude Code & Codex configured"
     echo ""
 
     echo -e "${BOLD}Quick reference commands:${RESET}"
@@ -804,6 +1017,8 @@ show_completion() {
     log_step "AWS identity:    ${CYAN}aws sts get-caller-identity${RESET}"
     log_step "GitHub status:   ${CYAN}gh auth status${RESET}"
     log_step "Test SSH:        ${CYAN}ssh -T git@github.com${RESET}"
+    log_step "Claude Code:     ${CYAN}claude${RESET}"
+    log_step "OpenAI Codex:    ${CYAN}codex${RESET}"
     log_step "Update system:   ${CYAN}darwin-rebuild switch --flake .#mac --impure${RESET}"
     echo ""
 
@@ -883,9 +1098,15 @@ main() {
         pending_steps+=("9. Slack (team communication)")
     fi
 
+    if is_ai_assistants_configured; then
+        configured_steps+=("10. AI Assistants ✓")
+    else
+        pending_steps+=("10. AI Assistants (Claude Code & Codex)")
+    fi
+
     # Show status summary
     if [[ ${#configured_steps[@]} -gt 0 ]]; then
-        log_success "Already configured (${#configured_steps[@]}/9):"
+        log_success "Already configured (${#configured_steps[@]}/10):"
         for step in "${configured_steps[@]}"; do
             log_step "$step"
         done
@@ -893,7 +1114,7 @@ main() {
     fi
 
     if [[ ${#pending_steps[@]} -gt 0 ]]; then
-        log_info "Pending setup (${#pending_steps[@]}/9):"
+        log_info "Pending setup (${#pending_steps[@]}/10):"
         for step in "${pending_steps[@]}"; do
             log_step "$step"
         done
@@ -922,6 +1143,7 @@ main() {
     setup_cursor
     setup_linear
     setup_slack
+    setup_ai_assistants
 
     # Show completion message
     show_completion

@@ -5,6 +5,10 @@
     # Development tools
     docker-compose
     terraform
+# AI coding assistants
+# Anthropic's agentic coding tool
+claude-code codex # OpenAI's lightweight coding agent
+
   ];
 
   # Git configuration
