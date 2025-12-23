@@ -534,6 +534,29 @@ activate_system() {
     # This ensures backupFileExtension works even if backup files from previous runs exist
     export HOME_MANAGER_BACKUP_OVERWRITE=1
 
+    # Handle nix-darwin /etc file conflicts
+    # nix-darwin wants to manage /etc/bashrc and /etc/zshrc
+    log_info "Checking for /etc file conflicts..."
+    local etc_files=("/etc/bashrc" "/etc/zshrc")
+    local renamed_files=()
+    
+    for etc_file in "${etc_files[@]}"; do
+        if [[ -f "$etc_file" ]]; then
+            local backup_name="${etc_file}.before-nix-darwin"
+            if [[ ! -f "$backup_name" ]]; then
+                log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
+                if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
+                    renamed_files+=("$backup_name")
+                    log_success "Renamed $(basename "$etc_file")"
+                else
+                    log_warning "Failed to rename $etc_file - you may need to do this manually"
+                fi
+            else
+                log_info "$(basename "$etc_file") already backed up as $(basename "$backup_name")"
+            fi
+        fi
+    done
+
     # Define critical files that home-manager manages
     local critical_files=("$HOME/.zshrc" "$HOME/.zshenv" "$HOME/.zprofile")
 
@@ -549,11 +572,66 @@ activate_system() {
     if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure 2>&1 | tee "$rebuild_output"; then
         rm -f "$rebuild_output"
         log_success "System activated"
-
+        
+        if [[ ${#renamed_files[@]} -gt 0 ]]; then
+            log_info "Backed up ${#renamed_files[@]} /etc file(s) before activation"
+        fi
+        
         # Verify that key settings from machines/default.nix were applied
         log_info "Verifying system configuration..."
         verify_system_config
         return 0
+    fi
+
+    # Check if failure was due to /etc file conflicts (nix-darwin specific)
+    if grep -q "Unexpected files in /etc" "$rebuild_output" 2>/dev/null; then
+        log_warning "nix-darwin detected /etc file conflicts"
+        log_info "Attempting to handle /etc file conflicts automatically..."
+        
+        # Extract /etc files from error message - look for lines like "  /etc/bashrc" or "  /etc/zshrc"
+        local etc_conflicts=()
+        while IFS= read -r line; do
+            # Match lines that contain /etc/bashrc or /etc/zshrc
+            if [[ "$line" =~ /etc/(bashrc|zshrc) ]]; then
+                local etc_file="/etc/${BASH_REMATCH[1]}"
+                if [[ -f "$etc_file" ]]; then
+                    etc_conflicts+=("$etc_file")
+                fi
+            fi
+        done < <(grep -E "/etc/(bashrc|zshrc)" "$rebuild_output" 2>/dev/null || true)
+        
+        # If we didn't find them in the error message, check for them directly
+        if [[ ${#etc_conflicts[@]} -eq 0 ]]; then
+            [[ -f "/etc/bashrc" ]] && etc_conflicts+=("/etc/bashrc")
+            [[ -f "/etc/zshrc" ]] && etc_conflicts+=("/etc/zshrc")
+        fi
+        
+        # Rename /etc files if found
+        for etc_file in "${etc_conflicts[@]}"; do
+            local backup_name="${etc_file}.before-nix-darwin"
+            if [[ ! -f "$backup_name" ]]; then
+                log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
+                if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
+                    log_success "Renamed $(basename "$etc_file")"
+                else
+                    log_error "Failed to rename $etc_file"
+                    log_step "You may need to manually run: sudo mv $etc_file $backup_name"
+                fi
+            else
+                log_info "$(basename "$etc_file") already backed up"
+            fi
+        done
+        
+        # Retry activation after handling /etc conflicts
+        if [[ ${#etc_conflicts[@]} -gt 0 ]]; then
+            log_info "Retrying activation after handling /etc file conflicts..."
+            if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure 2>&1 | tee "$rebuild_output"; then
+                rm -f "$rebuild_output"
+                log_success "System activated after handling /etc conflicts"
+                verify_system_config
+                return 0
+            fi
+        fi
     fi
 
     # Check if failure was due to file conflicts
