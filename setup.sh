@@ -435,8 +435,39 @@ EOF
 
 build_system() {
     log_info "Building system as $(whoami)..."
-    FLAKE_DIR="$SCRIPT_DIR" nix build "$SCRIPT_DIR#darwinConfigurations.mac.system" --impure
-    log_success "System built successfully"
+
+    # Validate that local.nix exists and has required fields
+    if [[ ! -f "$SCRIPT_DIR/local.nix" ]]; then
+        log_error "local.nix not found!"
+        log_step "Run ./setup.sh to generate it, or copy local.nix.template to local.nix"
+        return 1
+    fi
+
+    # Quick validation that local.nix has required fields
+    log_info "Validating local.nix configuration..."
+    if ! grep -q "username" "$SCRIPT_DIR/local.nix" || ! grep -q "system" "$SCRIPT_DIR/local.nix"; then
+        log_error "local.nix is missing required fields (username or system)"
+        log_step "Check $SCRIPT_DIR/local.nix and ensure it has username and system fields"
+        return 1
+    fi
+    log_success "local.nix validation passed"
+
+    # Build the system - this will fail if machines/default.nix can't be loaded
+    log_info "Building nix-darwin system (this validates that machines/default.nix loads correctly)..."
+    if FLAKE_DIR="$SCRIPT_DIR" nix build "$SCRIPT_DIR#darwinConfigurations.mac.system" --impure 2>&1 | tee /tmp/nix-build.log; then
+        log_success "System built successfully - machines/default.nix was loaded correctly"
+    else
+        log_error "System build failed"
+        if grep -q "undefined variable" /tmp/nix-build.log 2>/dev/null; then
+            log_error "Module evaluation error detected"
+            log_step "This might indicate machines/default.nix is missing required arguments"
+            log_step "Check that username is set in local.nix"
+        fi
+        log_step "Check the error messages above for details"
+        rm -f /tmp/nix-build.log
+        return 1
+    fi
+    rm -f /tmp/nix-build.log
 }
 
 cleanup_home_manager_backups() {
@@ -518,6 +549,10 @@ activate_system() {
     if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure 2>&1 | tee "$rebuild_output"; then
         rm -f "$rebuild_output"
         log_success "System activated"
+
+        # Verify that key settings from machines/default.nix were applied
+        log_info "Verifying system configuration..."
+        verify_system_config
         return 0
     fi
 
@@ -772,6 +807,69 @@ apply_personal_config() {
 }
 
 # =============================================================================
+# Verification Functions
+# =============================================================================
+
+verify_system_config() {
+    log_info "Verifying system configuration from machines/default.nix..."
+
+    local checks_passed=0
+    local checks_total=0
+
+    # Check 1: Verify nix-darwin is active
+    checks_total=$((checks_total + 1))
+    if [[ -f "/run/current-system/sw/bin/darwin-rebuild" ]] || command -v darwin-rebuild &>/dev/null; then
+        log_success "✓ nix-darwin system is active"
+        checks_passed=$((checks_passed + 1))
+    else
+        log_warning "⚠ nix-darwin system may not be fully activated"
+    fi
+
+    # Check 2: Verify Nix flakes are enabled (from machines/default.nix)
+    checks_total=$((checks_total + 1))
+    if nix show-config 2>/dev/null | grep -q "experimental-features.*flakes"; then
+        log_success "✓ Nix flakes enabled"
+        checks_passed=$((checks_passed + 1))
+    else
+        log_warning "⚠ Nix flakes may not be enabled"
+    fi
+
+    # Check 3: Verify Homebrew is available (needed for machines/default.nix casks)
+    checks_total=$((checks_total + 1))
+    if command -v brew &>/dev/null || [[ -d "/opt/homebrew" ]] || [[ -d "/usr/local/Homebrew" ]]; then
+        log_success "✓ Homebrew available"
+        checks_passed=$((checks_passed + 1))
+    else
+        log_warning "⚠ Homebrew not found - casks from machines/default.nix won't install until Homebrew is installed"
+    fi
+
+    # Check 4: Verify dock settings can be read (indicates system.defaults is accessible)
+    checks_total=$((checks_total + 1))
+    if command -v defaults &>/dev/null; then
+        local dock_autohide
+        dock_autohide=$(defaults read com.apple.dock autohide 2>/dev/null || echo "")
+        if [[ -n "$dock_autohide" ]]; then
+            log_success "✓ System preferences accessible (dock autohide: $dock_autohide)"
+            checks_passed=$((checks_passed + 1))
+        else
+            log_info "ℹ Dock settings will be applied on next login"
+        fi
+    fi
+
+    # Summary
+    echo ""
+    if [[ $checks_passed -eq $checks_total ]]; then
+        log_success "All configuration checks passed ($checks_passed/$checks_total)"
+    else
+        log_info "Configuration checks: $checks_passed/$checks_total passed"
+        if [[ $checks_passed -lt $checks_total ]]; then
+            log_step "Some settings may require a logout/login to take effect"
+            log_step "Homebrew casks will install automatically on next darwin-rebuild"
+        fi
+    fi
+}
+
+# =============================================================================
 # Post-Install Setup
 # =============================================================================
 
@@ -852,8 +950,30 @@ show_final_steps() {
     log_success "Nix-darwin system has been installed and configured!"
     echo ""
 
+    log_info "Configuration Summary:"
+    echo ""
+    log_step "✓ machines/default.nix - System settings (dock, keyboard, firewall, Homebrew casks)"
+    log_step "✓ home.nix - User configuration (shell, tools, themes)"
+    log_step "✓ modules/ - Modular configuration (software, languages, theme, tools)"
+    echo ""
+
+    log_info "What was configured from machines/default.nix:"
+    log_step "  • macOS system preferences (dock autohide, keyboard settings)"
+    log_step "  • Homebrew taps and casks (installing automatically via homebrew module)"
+    log_step "  • Nix settings (flakes enabled, trusted users)"
+    log_step "  • Application firewall configuration"
+    log_step "  • Display resolution (if supported Mac model)"
+    echo ""
+
     log_warning "IMPORTANT: Start a new terminal session to load shell changes!"
     log_step "Close this terminal and open a new one, or run: exec zsh"
+    echo ""
+
+    log_info "Note: Some settings may require a logout/login to take full effect:"
+    log_step "  • Dock settings (autohide, size, persistent apps)"
+    log_step "  • Keyboard preferences (function keys)"
+    log_step "  • Default browser settings"
+    log_step "  • Homebrew casks will install automatically on next darwin-rebuild"
     echo ""
 
     log_info "Next step: Run the onboarding wizard to set up your applications."
