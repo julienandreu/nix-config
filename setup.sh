@@ -536,23 +536,53 @@ activate_system() {
 
     # Handle nix-darwin /etc file conflicts
     # nix-darwin wants to manage /etc/bashrc and /etc/zshrc
+    # These may be regular files or symlinks (macOS often uses symlinks)
     log_info "Checking for /etc file conflicts..."
     local etc_files=("/etc/bashrc" "/etc/zshrc")
     local renamed_files=()
-    
+
     for etc_file in "${etc_files[@]}"; do
-        if [[ -f "$etc_file" ]]; then
+        # Check if file exists (regular file, symlink, or directory)
+        if [[ -e "$etc_file" ]]; then
             local backup_name="${etc_file}.before-nix-darwin"
-            if [[ ! -f "$backup_name" ]]; then
-                log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
-                if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
-                    renamed_files+=("$backup_name")
-                    log_success "Renamed $(basename "$etc_file")"
+            
+            # Check if it's already backed up
+            if [[ ! -e "$backup_name" ]]; then
+                # Check if it's a symlink
+                if [[ -L "$etc_file" ]]; then
+                    log_info "Removing symlink $(basename "$etc_file") (points to $(readlink "$etc_file"))..."
+                    # Save the symlink target first
+                    local symlink_target
+                    symlink_target=$(readlink "$etc_file")
+                    # Remove the symlink
+                    if sudo rm "$etc_file" 2>/dev/null; then
+                        # Create a backup file with the symlink target info
+                        echo "# Original symlink target: $symlink_target" | sudo tee "$backup_name" > /dev/null
+                        renamed_files+=("$backup_name")
+                        log_success "Removed symlink $(basename "$etc_file")"
+                    else
+                        log_warning "Failed to remove symlink $etc_file - you may need to do this manually"
+                    fi
                 else
-                    log_warning "Failed to rename $etc_file - you may need to do this manually"
+                    # Regular file - rename it
+                    log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
+                    if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
+                        renamed_files+=("$backup_name")
+                        log_success "Renamed $(basename "$etc_file")"
+                    else
+                        log_warning "Failed to rename $etc_file - you may need to do this manually"
+                    fi
                 fi
             else
                 log_info "$(basename "$etc_file") already backed up as $(basename "$backup_name")"
+                # Still remove the existing file/symlink if it exists
+                if [[ -L "$etc_file" ]]; then
+                    log_info "Removing existing symlink $(basename "$etc_file")..."
+                    sudo rm "$etc_file" 2>/dev/null || true
+                elif [[ -f "$etc_file" ]]; then
+                    log_info "Removing existing file $(basename "$etc_file")..."
+                    sudo rm "$etc_file" 2>/dev/null || true
+                fi
             fi
         fi
     done
@@ -572,11 +602,11 @@ activate_system() {
     if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure 2>&1 | tee "$rebuild_output"; then
         rm -f "$rebuild_output"
         log_success "System activated"
-        
+
         if [[ ${#renamed_files[@]} -gt 0 ]]; then
             log_info "Backed up ${#renamed_files[@]} /etc file(s) before activation"
         fi
-        
+
         # Verify that key settings from machines/default.nix were applied
         log_info "Verifying system configuration..."
         verify_system_config
@@ -587,41 +617,62 @@ activate_system() {
     if grep -q "Unexpected files in /etc" "$rebuild_output" 2>/dev/null; then
         log_warning "nix-darwin detected /etc file conflicts"
         log_info "Attempting to handle /etc file conflicts automatically..."
-        
+
         # Extract /etc files from error message - look for lines like "  /etc/bashrc" or "  /etc/zshrc"
         local etc_conflicts=()
         while IFS= read -r line; do
             # Match lines that contain /etc/bashrc or /etc/zshrc
             if [[ "$line" =~ /etc/(bashrc|zshrc) ]]; then
                 local etc_file="/etc/${BASH_REMATCH[1]}"
-                if [[ -f "$etc_file" ]]; then
+                if [[ -e "$etc_file" ]]; then
                     etc_conflicts+=("$etc_file")
                 fi
             fi
         done < <(grep -E "/etc/(bashrc|zshrc)" "$rebuild_output" 2>/dev/null || true)
-        
+
         # If we didn't find them in the error message, check for them directly
         if [[ ${#etc_conflicts[@]} -eq 0 ]]; then
-            [[ -f "/etc/bashrc" ]] && etc_conflicts+=("/etc/bashrc")
-            [[ -f "/etc/zshrc" ]] && etc_conflicts+=("/etc/zshrc")
+            [[ -e "/etc/bashrc" ]] && etc_conflicts+=("/etc/bashrc")
+            [[ -e "/etc/zshrc" ]] && etc_conflicts+=("/etc/zshrc")
         fi
-        
-        # Rename /etc files if found
+
+        # Handle /etc files if found (may be symlinks or regular files)
         for etc_file in "${etc_conflicts[@]}"; do
             local backup_name="${etc_file}.before-nix-darwin"
-            if [[ ! -f "$backup_name" ]]; then
-                log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
-                if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
-                    log_success "Renamed $(basename "$etc_file")"
-                else
-                    log_error "Failed to rename $etc_file"
-                    log_step "You may need to manually run: sudo mv $etc_file $backup_name"
+            if [[ ! -e "$backup_name" ]]; then
+                if [[ -L "$etc_file" ]]; then
+                    # It's a symlink - remove it
+                    log_info "Removing symlink $(basename "$etc_file")..."
+                    local symlink_target
+                    symlink_target=$(readlink "$etc_file")
+                    if sudo rm "$etc_file" 2>/dev/null; then
+                        echo "# Original symlink target: $symlink_target" | sudo tee "$backup_name" > /dev/null
+                        log_success "Removed symlink $(basename "$etc_file")"
+                    else
+                        log_error "Failed to remove symlink $etc_file"
+                        log_step "You may need to manually run: sudo rm $etc_file"
+                    fi
+                elif [[ -f "$etc_file" ]]; then
+                    # Regular file - rename it
+                    log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
+                    if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
+                        log_success "Renamed $(basename "$etc_file")"
+                    else
+                        log_error "Failed to rename $etc_file"
+                        log_step "You may need to manually run: sudo mv $etc_file $backup_name"
+                    fi
                 fi
             else
                 log_info "$(basename "$etc_file") already backed up"
+                # Still remove the existing file/symlink
+                if [[ -L "$etc_file" ]]; then
+                    sudo rm "$etc_file" 2>/dev/null || true
+                elif [[ -f "$etc_file" ]]; then
+                    sudo rm "$etc_file" 2>/dev/null || true
+                fi
             fi
         done
-        
+
         # Retry activation after handling /etc conflicts
         if [[ ${#etc_conflicts[@]} -gt 0 ]]; then
             log_info "Retrying activation after handling /etc file conflicts..."
