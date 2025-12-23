@@ -799,6 +799,52 @@ start_karabiner_elements() {
     fi
 }
 
+reload_ghostty_theme() {
+    log_section "Reloading Ghostty Theme"
+
+    # Check if Ghostty is installed
+    if [[ ! -d "/Applications/Ghostty.app" ]]; then
+        log_warning "Ghostty not found - it may not be installed yet"
+        log_step "Ghostty will pick up the theme configuration when it's installed"
+        return 0
+    fi
+
+    # Check if Ghostty is running
+    if ! pgrep -f "Ghostty" > /dev/null; then
+        log_info "Ghostty is not running - opening a new window"
+        if open -a "Ghostty" 2>/dev/null; then
+            log_success "Ghostty opened with new theme configuration"
+        else
+            log_warning "Failed to open Ghostty"
+        fi
+        return 0
+    fi
+
+    log_info "Reloading Ghostty configuration to apply new theme..."
+    log_step "Using Cmd+Shift+, to reload config dynamically"
+
+    # Reload Ghostty configuration using AppleScript
+    # This sends Cmd+Shift+, which is the default reload config shortcut
+    if osascript -e '
+        tell application "Ghostty"
+            if it is running then
+                activate
+                delay 0.25
+                tell application "System Events"
+                    keystroke "," using {shift down, command down}
+                end tell
+            end if
+        end tell
+    ' 2>/dev/null; then
+        log_success "Ghostty configuration reloaded - theme should be applied"
+        log_step "If the theme didn't change, you may need to restart Ghostty"
+    else
+        log_warning "Failed to reload Ghostty configuration programmatically"
+        log_step "You can reload manually: Press Cmd+Shift+, in Ghostty"
+        log_step "Or restart Ghostty: open -a Ghostty"
+    fi
+}
+
 show_final_steps() {
     log_header "System Installation Complete"
 
@@ -922,6 +968,9 @@ main() {
     # Phase 6: Start Karabiner Elements
     log_section "Starting Karabiner Elements"
     start_karabiner_elements
+
+    # Phase 7: Reload Ghostty theme dynamically
+    reload_ghostty_theme
 
     # Done - show summary and offer onboarding
     show_final_steps

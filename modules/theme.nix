@@ -1,5 +1,14 @@
 { pkgs, lib, catppuccinFlavor, ... }:
 
+let
+  # Map flavor names to Ghostty's Title Case format (handles accents correctly)
+  ghosttyThemeName = {
+    latte = "Latte";
+    frappe = "Frappé";
+    macchiato = "Macchiato";
+    mocha = "Mocha";
+  }.${catppuccinFlavor} or "Mocha";
+in
 {
   # Install nerd fonts
   # On macOS, home-manager installs fonts to ~/Library/Fonts/
@@ -17,7 +26,7 @@
       command_timeout = 1000; # Max time for each module (ms)
       scan_timeout = 10; # Max time for directory scan (ms)
 
-      format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch\${custom.git_fast}[](fg:green bg:teal)$nodejs$rust$python$golang[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
+      format = "[ ](surface0)$os$username[](bg:surface0 fg:base)$directory[](fg:base bg:green)$git_branch\${git_status}[](fg:green bg:teal)$nodejs$rust$python$golang[](fg:teal bg:peach)$time[](fg:peach bg:crust)$cmd_duration[](fg:crust)$line_break$character";
 
       # Palette is set by catppuccin.starship module
       palette = "catppuccin_${catppuccinFlavor}";
@@ -82,15 +91,6 @@
         ignore_submodules = true;
         use_git_executable = true;
         untracked = "";
-      };
-
-      # Add fast custom command
-      custom.git_fast = {
-        style = "bg:green fg:base";
-        format = "[($output )]($style)";
-        description = "Fast git status indicator";
-        command = "git diff --quiet 2>/dev/null || echo -n '!'; git diff --cached --quiet 2>/dev/null || echo -n '+'";
-        when = "[ -d .git ] || git rev-parse --git-dir >/dev/null 2>&1";
       };
 
 
@@ -283,7 +283,12 @@
 
   # Ghostty terminal configuration
   # See: https://www.bitdoze.com/starship-ghostty-terminal/
+  # Ghostty theme names use Title Case format (e.g., "Catppuccin Mocha")
+  # See: https://github.com/ghostty-org/ghostty/discussions/8702
   home.file.".config/ghostty/config".text = ''
+    # Theme - Catppuccin (Title Case format required)
+    theme = "Catppuccin ${ghosttyThemeName}"
+
     # Font settings
     font-family = MesloLGS Nerd Font Mono
     font-size = 12
