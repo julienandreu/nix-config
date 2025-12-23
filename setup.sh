@@ -534,58 +534,60 @@ activate_system() {
     # This ensures backupFileExtension works even if backup files from previous runs exist
     export HOME_MANAGER_BACKUP_OVERWRITE=1
 
-    # Handle nix-darwin /etc file conflicts
+    # Handle nix-darwin /etc file conflicts proactively
     # nix-darwin wants to manage /etc/bashrc and /etc/zshrc
     # These may be regular files or symlinks (macOS often uses symlinks)
-    log_info "Checking for /etc file conflicts..."
+    # We handle them BEFORE activation to prevent errors
+    log_info "Checking for /etc file conflicts that would prevent activation..."
     local etc_files=("/etc/bashrc" "/etc/zshrc")
-    local renamed_files=()
+    local handled_files=0
 
     for etc_file in "${etc_files[@]}"; do
         # Check if file exists (regular file, symlink, or directory)
         if [[ -e "$etc_file" ]]; then
             local backup_name="${etc_file}.before-nix-darwin"
             
-            # Check if it's already backed up
-            if [[ ! -e "$backup_name" ]]; then
-                # Check if it's a symlink
-                if [[ -L "$etc_file" ]]; then
-                    log_info "Removing symlink $(basename "$etc_file") (points to $(readlink "$etc_file"))..."
-                    # Save the symlink target first
-                    local symlink_target
-                    symlink_target=$(readlink "$etc_file")
-                    # Remove the symlink
-                    if sudo rm "$etc_file" 2>/dev/null; then
-                        # Create a backup file with the symlink target info
+            # Always handle the file if it exists, even if backup exists
+            # This ensures nix-darwin can create its own files
+            if [[ -L "$etc_file" ]]; then
+                # It's a symlink - remove it and save target info
+                log_info "Removing symlink $(basename "$etc_file") (points to $(readlink "$etc_file"))..."
+                local symlink_target
+                symlink_target=$(readlink "$etc_file")
+                
+                # Remove the symlink
+                if sudo rm "$etc_file" 2>/dev/null; then
+                    # Save the symlink target info if backup doesn't exist
+                    if [[ ! -e "$backup_name" ]]; then
                         echo "# Original symlink target: $symlink_target" | sudo tee "$backup_name" > /dev/null
-                        renamed_files+=("$backup_name")
-                        log_success "Removed symlink $(basename "$etc_file")"
-                    else
-                        log_warning "Failed to remove symlink $etc_file - you may need to do this manually"
                     fi
+                    handled_files=$((handled_files + 1))
+                    log_success "Removed symlink $(basename "$etc_file")"
                 else
-                    # Regular file - rename it
-                    log_info "Renaming $(basename "$etc_file") to $(basename "$backup_name")..."
-                    if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
-                        renamed_files+=("$backup_name")
-                        log_success "Renamed $(basename "$etc_file")"
-                    else
-                        log_warning "Failed to rename $etc_file - you may need to do this manually"
-                    fi
+                    log_error "Failed to remove symlink $etc_file"
+                    log_step "You may need to manually run: sudo rm $etc_file"
+                    return 1
                 fi
-            else
-                log_info "$(basename "$etc_file") already backed up as $(basename "$backup_name")"
-                # Still remove the existing file/symlink if it exists
-                if [[ -L "$etc_file" ]]; then
-                    log_info "Removing existing symlink $(basename "$etc_file")..."
-                    sudo rm "$etc_file" 2>/dev/null || true
-                elif [[ -f "$etc_file" ]]; then
-                    log_info "Removing existing file $(basename "$etc_file")..."
-                    sudo rm "$etc_file" 2>/dev/null || true
+            elif [[ -f "$etc_file" ]]; then
+                # Regular file - rename it to backup
+                log_info "Backing up $(basename "$etc_file") to $(basename "$backup_name")..."
+                if sudo mv "$etc_file" "$backup_name" 2>/dev/null; then
+                    handled_files=$((handled_files + 1))
+                    log_success "Backed up $(basename "$etc_file")"
+                else
+                    log_error "Failed to backup $etc_file"
+                    log_step "You may need to manually run: sudo mv $etc_file $backup_name"
+                    return 1
                 fi
             fi
+        else
+            log_info "✓ $(basename "$etc_file") doesn't exist (no conflict)"
         fi
     done
+
+    if [[ $handled_files -gt 0 ]]; then
+        log_success "Handled $handled_files /etc file(s) that would have caused activation to fail"
+    fi
 
     # Define critical files that home-manager manages
     local critical_files=("$HOME/.zshrc" "$HOME/.zshenv" "$HOME/.zprofile")
