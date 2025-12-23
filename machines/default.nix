@@ -1,6 +1,7 @@
 { pkgs, username, ... }:
 
 {
+  # Set primary user - username comes from specialArgs in flake.nix
   system.primaryUser = username;
 
   programs.zsh.enable = true;
