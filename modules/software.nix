@@ -29,64 +29,6 @@ claude-code codex # OpenAI's lightweight coding agent
 
       # Color settings
       color.ui = "auto";
-
-      # GPG settings
-      gpg.format = "ssh";
-      commit.gpgsign = true;
-
-      # Git LFS filter
-      filter.lfs.required = true;
-      filter.lfs.clean = "git-lfs clean -- %f";
-      filter.lfs.smudge = "git-lfs smudge -- %f";
-      filter.lfs.process = "git-lfs filter-process";
-
-      # ===== Performance Optimizations =====
-      # See: https://www.git-tower.com/blog/git-performance/
-      # See: https://stackoverflow.com/questions/4994772/ways-to-improve-git-status-performance
-
-      # Working tree performance
-      core.fsmonitor = true; # Built-in file system monitor (Git 2.37+)
-      core.untrackedCache = true; # Cache untracked file searches
-      core.preloadIndex = true; # Parallel index loading
-      feature.manyFiles = true; # Optimizations for large repos (enables index v4 + untrackedCache)
-      index.version = 4; # Smaller index format (30-50% reduction)
-
-      # History performance
-      core.commitGraph = true; # Use commit graph for faster history
-      fetch.writeCommitGraph = true; # Update commit graph on fetch
-      gc.writeCommitGraph = true; # Update commit graph on gc
-
-      # Pack/compression performance
-      pack.threads = 0; # Use all CPU cores for packing
-
-      # Performance: Skip expensive checks for faster git_status in Starship
-      status.aheadBehind = false;  # Skip ahead/behind calculation with remote (saves network/commit-graph queries)
-      diff.ignoreSubmodules = "dirty";  # Skip checking clean submodule working trees
-
-      # Diff settings
-      diff.algorithm = "histogram";
-      status.showUntrackedFiles = "no";  # Skip untracked file scanning (biggest performance win for Starship)
-      log.decorate = "short";
-
-      # Delta - syntax-highlighted diffs
-      core.pager = "delta";
-      interactive.diffFilter = "delta --color-only";
-      delta = {
-        navigate = true; # use n/N to jump between diff sections
-        dark = true;
-        line-numbers = true;
-        side-by-side = false; # set to true for side-by-side view
-      };
-      merge.conflictstyle = "zdiff3";
-      diff.colorMoved = "default";
-
-      aliases = {
-        st = "status";
-        co = "checkout";
-        br = "branch";
-        ci = "commit";
-        lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit";
-      };
     };
     # Catppuccin theme for delta is configured via catppuccin.delta module in theme.nix
   };
@@ -169,6 +111,9 @@ claude-code codex # OpenAI's lightweight coding agent
       "editor.fontFamily" = "'MesloLGL Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace";
       "editor.fontSize" = 12;
       "editor.fontLigatures" = true;
+
+      # Minimap settings
+      "editor.minimap.enabled" = true;
 
       # Editor settings from colleague's configuration
       "editor.codeActionsOnSave" = {
