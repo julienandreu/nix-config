@@ -546,7 +546,7 @@ activate_system() {
         # Check if file exists (regular file, symlink, or directory)
         if [[ -e "$etc_file" ]]; then
             local backup_name="${etc_file}.before-nix-darwin"
-            
+
             # Always handle the file if it exists, even if backup exists
             # This ensures nix-darwin can create its own files
             if [[ -L "$etc_file" ]]; then
@@ -554,7 +554,7 @@ activate_system() {
                 log_info "Removing symlink $(basename "$etc_file") (points to $(readlink "$etc_file"))..."
                 local symlink_target
                 symlink_target=$(readlink "$etc_file")
-                
+
                 # Remove the symlink
                 if sudo rm "$etc_file" 2>/dev/null; then
                     # Save the symlink target info if backup doesn't exist
@@ -604,10 +604,6 @@ activate_system() {
     if sudo -E FLAKE_DIR="$SCRIPT_DIR" "$SCRIPT_DIR/result/sw/bin/darwin-rebuild" switch --flake "$FLAKE" --impure 2>&1 | tee "$rebuild_output"; then
         rm -f "$rebuild_output"
         log_success "System activated"
-
-        if [[ ${#renamed_files[@]} -gt 0 ]]; then
-            log_info "Backed up ${#renamed_files[@]} /etc file(s) before activation"
-        fi
 
         # Verify that key settings from machines/default.nix were applied
         log_info "Verifying system configuration..."
