@@ -87,11 +87,12 @@ claude-code codex # OpenAI's lightweight coding agent
     enable = true;
   };
 
-  # Cursor Editor configuration - inlined in Nix
-  # Cursor uses VS Code's settings.json format
-  # Path: ~/Library/Application Support/Cursor/User/settings.json
-  home.file."Library/Application Support/Cursor/User/settings.json" = {
-    force = true;
+  # Cursor Editor configuration - hybrid approach (Option 2)
+  # Nix manages defaults that can be overridden by user settings
+  # Path: ~/Library/Application Support/Cursor/User/settings.json.defaults
+  # The merge script (scripts/merge-cursor-settings.sh) merges defaults with user settings
+  # User can freely edit settings.json - their changes will be preserved
+  home.file."Library/Application Support/Cursor/User/settings.json.defaults" = {
     text = builtins.toJSON ({
       # Catppuccin Theme
       # Requires extensions: Catppuccin.catppuccin-vsc + Catppuccin.catppuccin-vsc-icons
@@ -196,4 +197,63 @@ claude-code codex # OpenAI's lightweight coding agent
       };
     });
   };
+
+  # Merge Cursor settings on activation: combine Nix defaults with user overrides
+  # This allows users to edit settings.json freely while keeping Nix-managed defaults
+  home.activation.mergeCursorSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    CURSOR_USER_DIR="$HOME/Library/Application Support/Cursor/User"
+    DEFAULTS_FILE="$CURSOR_USER_DIR/settings.json.defaults"
+    SETTINGS_FILE="$CURSOR_USER_DIR/settings.json"
+
+    # Ensure directory exists
+    mkdir -p "$CURSOR_USER_DIR"
+
+    # If defaults don't exist yet, skip (first run)
+    if [ ! -f "$DEFAULTS_FILE" ]; then
+      exit 0
+    fi
+
+    # If settings.json doesn't exist, copy defaults
+    if [ ! -f "$SETTINGS_FILE" ]; then
+      cp "$DEFAULTS_FILE" "$SETTINGS_FILE"
+      echo "Created Cursor settings.json from Nix defaults"
+      exit 0
+    fi
+
+    # Merge: user settings override defaults (using jq)
+    # Deep merge where user values take precedence
+    if command -v jq >/dev/null 2>&1; then
+      MERGED=$(jq -s '.[0] * .[1]' "$DEFAULTS_FILE" "$SETTINGS_FILE" 2>/dev/null)
+      if [ $? -eq 0 ] && [ -n "$MERGED" ]; then
+        # Only update if there are changes (macOS-compatible hash)
+        if command -v md5sum >/dev/null 2>&1; then
+          HASH_CMD="md5sum"
+          HASH_CUT="cut -d' ' -f1"
+        elif command -v md5 >/dev/null 2>&1; then
+          HASH_CMD="md5"
+          HASH_CUT="cut -d' ' -f4"
+        else
+          HASH_CMD=""
+        fi
+
+        if [ -n "$HASH_CMD" ]; then
+          CURRENT_HASH=$(jq -c . "$SETTINGS_FILE" | $HASH_CMD | $HASH_CUT)
+          MERGED_HASH=$(echo "$MERGED" | jq -c . | $HASH_CMD | $HASH_CUT)
+
+          if [ "$CURRENT_HASH" != "$MERGED_HASH" ]; then
+            cp "$SETTINGS_FILE" "$SETTINGS_FILE.backup"
+            echo "$MERGED" | jq . > "$SETTINGS_FILE"
+            echo "Merged Nix defaults with user Cursor settings"
+          fi
+        else
+          # Fallback: always merge if hash command not available
+          cp "$SETTINGS_FILE" "$SETTINGS_FILE.backup"
+          echo "$MERGED" | jq . > "$SETTINGS_FILE"
+          echo "Merged Nix defaults with user Cursor settings"
+        fi
+      fi
+    else
+      echo "Warning: jq not found, skipping Cursor settings merge"
+    fi
+  '';
 }
