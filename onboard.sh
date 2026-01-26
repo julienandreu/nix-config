@@ -80,7 +80,7 @@ wait_for_user() {
 }
 
 wait_for_completion() {
-    local message="${1:-Press Enter when you've completed this step...}"
+    local message="${1:-Press Enter when you\'ve completed this step...}"
     echo ""
     echo -e "   ${YELLOW}⏳${RESET} ${message}"
     read -rp "   "
