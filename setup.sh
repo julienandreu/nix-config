@@ -344,10 +344,18 @@ install_homebrew() {
     fi
 
     # Verify Homebrew is working
-    if command -v brew &>/dev/null && brew --version &>/dev/null; then
-        log_success "Homebrew installed and verified successfully"
+    if command -v brew &>/dev/null; then
+        if brew --version &>/dev/null; then
+            log_success "Homebrew installed and verified successfully"
+            log_info "Homebrew version: $(brew --version | head -1)"
+            log_info "Homebrew location: $(which brew)"
+        else
+            log_error "Homebrew command found but not working correctly"
+            return 1
+        fi
     else
-        log_error "Homebrew installed but not working correctly"
+        log_error "Homebrew command not in PATH after installation"
+        log_step "Check: ls -la /opt/homebrew/bin/brew || ls -la /usr/local/bin/brew"
         return 1
     fi
 }
