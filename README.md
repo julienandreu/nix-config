@@ -1,97 +1,74 @@
 # Personal Nix Configuration
 
-This repository contains my personal Nix configuration for macOS development environments. It provides a reproducible, version-controlled development environment that can be set up in minutes.
+A reproducible macOS development environment using Nix, nix-darwin, and Home Manager. Set up your entire development workstation in minutes with a single command.
 
-## 🎯 What This Does
+## 🎯 What This Provides
 
-This configuration automatically sets up:
+### System Configuration (via nix-darwin)
+- **macOS Settings**: Dock, keyboard, firewall, default browser
+- **Applications**: Homebrew casks automatically installed
 
-- **Terminal & Shell**: Ghostty, Zsh with Starship prompt
-- **Development Tools**: Git, GitHub CLI, AWS CLI, Docker
-- **Languages**: Node.js/TypeScript, Rust, Python
-- **CLI Tools**: Neovim, Zoxide, Ripgrep, fd, fzf, jq
-- **GUI Apps**: Cursor, Slack, Linear, Docker, Karabiner Elements (via nix-darwin's Homebrew module)
-- **System**: Karabiner Elements for keyboard customization
-- **Theme**: Catppuccin Mocha throughout
+### Development Environment (via Home Manager)
+- **Terminal & Shell**: Ghostty terminal, Zsh with Starship prompt
+- **Development Tools**: Git, Docker, GitHub CLI, AWS CLI, Terraform
+- **Programming Languages**: Node.js (via fnm), Rust, Python
+- **Modern CLI Tools**: Neovim, ripgrep, fd, bat, fzf, zoxide, and more
+- **GUI Applications**: Cursor, Chrome, Docker Desktop, Slack, Linear, 1Password
+- **Keyboard**: Karabiner Elements for custom keyboard mappings
+- **Theme**: Catppuccin Mocha across all tools
 
 ## 📋 Prerequisites
 
 - macOS (Apple Silicon or Intel)
 - Admin access to your machine
-- GitHub account
+- Internet connection
 
-## 🚀 Quick Start
+## 🚀 Installation
 
-### One-Line Install
+### One-Line Install (Recommended)
 
-Run this command in your terminal:
+Run this command on a fresh Mac:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/julienandreu/nix-config/main/install.sh)"
 ```
 
-Or with wget:
+This will:
+1. Install Xcode Command Line Tools (if needed)
+2. Clone repository to `~/.nix-config`
+3. Install Nix package manager
+4. Install Homebrew
+5. Build and activate your system configuration
+6. Guide you through personal setup (Git config, SSH keys, etc.)
+
+### Post-Installation: Application Setup
+
+After installation completes, run the onboarding wizard:
 
 ```bash
-/bin/bash -c "$(wget -qO- https://raw.githubusercontent.com/julienandreu/nix-config/main/install.sh)"
+cd ~/.nix-config
+./onboard.sh
 ```
 
-This will:
+This guides you through setting up:
+- Chrome (default browser & sign-in)
+- GitHub CLI (gh authentication)
+- 1Password (password manager)
+- AWS (console & CLI)
+- Cursor (AI code editor)
+- Docker Desktop (container platform)
+- Linear (project management)
+- Slack (team communication)
+- AI Assistants (Claude Code & Codex)
 
-1. Install Xcode Command Line Tools (if needed)
-2. Clone the repository to `~/.nix-config`
-3. Install Nix and enable flakes
-4. Build and activate the system configuration
-5. Guide you through personal setup (Git, SSH keys, etc.)
+### Manual Installation
 
-### Alternative: Manual Installation
-
-If you prefer to clone manually:
+If you prefer to clone first:
 
 ```bash
 git clone https://github.com/julienandreu/nix-config.git ~/.nix-config
 cd ~/.nix-config
 ./setup.sh
-```
-
-### Custom Install Location
-
-You can specify a custom install directory:
-
-```bash
-NIX_CONFIG_DIR=~/my-config /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/julienandreu/nix-config/main/install.sh)"
-```
-
-## 📝 What the Setup Does
-
-The setup script will interactively guide you through:
-
-1. **Nix Installation** - Installs Nix package manager and enables flakes
-2. **System Configuration** - Builds and activates nix-darwin
-3. **Git Setup** - Prompts for your name and email
-4. **SSH Key Generation** - Creates an ED25519 key for GitHub and helps you add it
-5. **Optional Integrations** - GitHub CLI and AWS CLI configuration
-
-After setup, some applications require manual sign-in:
-
-- **Cursor**: Open and sign in
-- **Docker**: Open Docker Desktop and start the daemon
-- **Slack/Linear**: Sign in to your workspaces
-
-## ✅ Verify Installation
-
-```bash
-# Check that key tools are installed
-which nvim git gh aws docker
-
-# Check language versions
-node --version
-rustc --version
-python3 --version
-
-# Check shell configuration
-echo $SHELL
-starship --version
 ```
 
 ## 📁 Project Structure
@@ -100,28 +77,38 @@ starship --version
 nix-config/
 ├── flake.nix              # Main Nix flake entry point
 ├── home.nix               # Home Manager configuration
-├── install.sh             # One-line bootstrap installer
-├── setup.sh               # Full setup script
-├── update.sh              # Update script
+├── local.nix              # Machine-specific config (generated, git-tracked)
+│
+├── install.sh             # Bootstrap installer
+├── setup.sh               # Full interactive setup (Git, SSH, system build)
+├── update.sh              # Update packages and rebuild
+├── onboard.sh             # Application setup wizard
+│
 ├── machines/
-│   └── default.nix        # nix-darwin system configuration
+│   └── default.nix        # macOS system settings & Homebrew
+│
 ├── modules/
-│   ├── software.nix       # Applications and tools
+│   ├── software.nix       # Dev tools (Git, Docker, AWS CLI, etc.)
 │   ├── languages.nix      # Programming languages
-│   ├── tools.nix          # CLI utilities
-│   └── theme.nix          # Visual theming
+│   ├── tools.nix          # CLI utilities & Neovim
+│   └── theme.nix          # Shell theme & terminal config
+│
 ├── configs/
-│   └── nvim/              # Neovim configuration
+│   └── nvim/              # Complete Neovim configuration
+│
+├── scripts/
+│   └── merge-cursor-settings.sh  # Cursor settings merge script
+│
 └── secrets/
-    ├── template.env       # Environment secrets template
-    └── template.nix       # Nix secrets template
+    ├── template.env       # Template for environment secrets
+    └── template.nix       # Template for Nix secrets
 ```
 
 ## 🔄 Daily Usage
 
 ### Updating Your Configuration
 
-When you want to update packages and pull latest changes:
+Pull latest changes and rebuild:
 
 ```bash
 cd ~/.nix-config
@@ -129,78 +116,169 @@ cd ~/.nix-config
 ```
 
 This will:
-
-- Pull latest changes from the repository
-- Update the flake lock file
-- Rebuild your configuration
+- Pull from Git repository
+- Update flake.lock (Nix dependencies)
+- Rebuild and activate your configuration
 
 ### Adding New Software
 
-To add new software to your configuration:
+1. Edit the appropriate module in `modules/`:
+   - `software.nix` - Development tools (Git, Docker, etc.)
+   - `languages.nix` - Programming languages
+   - `tools.nix` - CLI utilities
+   - `theme.nix` - Shell and terminal configuration
 
-1. Edit the appropriate module file in `modules/`
-2. Rebuild: `darwin-rebuild switch --flake .#mac`
+2. For GUI apps, edit `machines/default.nix` (Homebrew casks section)
 
-### Customizing Your Setup
+3. Rebuild:
+   ```bash
+   darwin-rebuild switch --flake ~/.nix-config#mac --impure
+   ```
 
-Personal customizations go in `~/.config/nix-config/local/`. See [CUSTOMIZATION.md](CUSTOMIZATION.md) for details.
+### Customizing Personal Settings
+
+Personal settings (Git name/email, SSH keys, etc.) are stored in:
+```
+~/.config/nix-config/local/secrets.nix
+```
+
+This file is gitignored and created during `setup.sh`.
 
 ## 🛠️ Troubleshooting
 
-### Nix build fails
+### Command not found after installation
 
+Start a new terminal session:
 ```bash
-# Clear the Nix store cache
-nix-collect-garbage -d
-
-# Rebuild
-darwin-rebuild switch --flake ~/.nix-config#mac
+exec zsh
 ```
 
-### Application not found after install
+Or close and reopen your terminal.
 
-Restart your terminal or source your profile:
+### Nix build fails
 
+Clean the Nix store and rebuild:
 ```bash
-source ~/.zshrc
+nix-collect-garbage -d
+darwin-rebuild switch --flake ~/.nix-config#mac --impure
+```
+
+### Homebrew apps not installed
+
+Homebrew casks install asynchronously. Check status:
+```bash
+brew list --cask
+```
+
+If an app is missing, install manually:
+```bash
+brew install --cask <app-name>
 ```
 
 ### Git configuration not applied
 
-Check that your secrets file exists and rebuild:
-
+Ensure secrets file exists:
 ```bash
-ls ~/.config/nix-config/local/secrets.nix
-darwin-rebuild switch --flake ~/.nix-config#mac
+cat ~/.config/nix-config/local/secrets.nix
 ```
+
+If missing, run `./setup.sh` to recreate it.
 
 ### SSH key not working
 
-Test your GitHub SSH connection:
-
+Test GitHub connection:
 ```bash
 ssh -T git@github.com
 ```
 
-## 🔐 Security Notes
+If it fails, ensure your public key is added to GitHub:
+```bash
+cat ~/.ssh/id_ed25519_github.pub | pbcopy
+# Then add to: https://github.com/settings/keys
+```
 
-- Never commit `~/.config/nix-config/local/secrets.nix` or files with real credentials
-- The `secrets/template.*` files are safe to commit (they're just templates)
-- AWS credentials are stored in `~/.aws/` (not managed by Nix)
-- GitHub tokens are managed by `gh auth` (stored securely by GitHub CLI)
+## ✅ Verification
 
-## 📚 Resources
+Check that everything is installed:
 
-- [Nix Reference Manual](https://nixos.org/manual/nix/stable/)
+```bash
+# Core tools
+which nix darwin-rebuild brew
+
+# Development tools
+which git gh docker aws
+
+# Languages
+which node rustc python3
+node --version
+rustc --version
+
+# CLI tools
+which nvim rg fd fzf bat
+
+# Shell
+echo $SHELL
+starship --version
+```
+
+## 🔐 Security
+
+- Never commit `~/.config/nix-config/local/secrets.nix` (gitignored)
+- SSH keys are stored in `~/.ssh/` (not managed by Nix)
+- AWS credentials in `~/.aws/` (not managed by Nix)
+- GitHub tokens managed by `gh auth` (stored securely)
+
+## 📚 Key Features
+
+### Fast Node.js Management
+- **fnm** (Fast Node Manager) - 150x faster than nvm
+- Auto-installs LTS on first shell startup
+- Switch Node versions instantly: `fnm use <version>`
+
+### Optimized Git Operations
+- **Delta** - Syntax-highlighted diffs
+- **SSH multiplexing** - 5x faster Git operations
+- **Connection sharing** - Reuses SSH connections
+
+### Modern CLI Replacements
+All written in Rust for speed:
+- `rg` (ripgrep) instead of grep
+- `fd` instead of find
+- `bat` instead of cat
+- `eza` instead of ls
+- `bottom` instead of top
+- `zoxide` instead of cd
+
+### Consistent Theming
+Catppuccin Mocha theme across:
+- Terminal (Ghostty)
+- Shell prompt (Starship)
+- Editor (Neovim, Cursor)
+- CLI tools (bat, delta, fzf)
+
+### Lazy Loading
+- Zsh completions defer 300-400ms of startup time
+- Plugins load on-demand
+
+## 📖 Learn More
+
+- [Nix Manual](https://nixos.org/manual/nix/stable/)
 - [Home Manager Manual](https://nix-community.github.io/home-manager/)
-- [Nix Darwin](https://github.com/LnL7/nix-darwin)
+- [nix-darwin](https://github.com/LnL7/nix-darwin)
 - [Zero to Nix](https://zero-to-nix.com/)
 - [Catppuccin Theme](https://github.com/catppuccin/catppuccin)
 
+## 🤝 Contributing
+
+This is a personal configuration, but feel free to:
+- Fork and adapt it for your needs
+- Open issues for bugs
+- Submit PRs for improvements
+
 ## 📝 License
 
-This configuration is provided as-is for personal use. Feel free to fork and adapt it to your needs.
+MIT License - Use freely for personal or commercial projects.
 
 ---
 
-**Note**: This configuration is designed for macOS. Linux support can be added by creating additional machine configurations.
+**Maintenance**: This configuration is actively maintained and tested on macOS with Apple Silicon.

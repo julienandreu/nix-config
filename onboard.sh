@@ -3,14 +3,15 @@
 set -euo pipefail
 
 # =============================================================================
-# Onboarding Script - Post-Installation Software Setup
+# Onboarding Script - Post-Installation Application Setup
 # =============================================================================
-# This script guides users through setting up all installed applications
-# in the correct order after the initial Nix configuration is applied.
+# This script guides users through setting up installed applications after
+# the initial Nix configuration is applied via setup.sh.
+#
+# Note: Git, SSH keys, and basic system configuration are handled by setup.sh
 # =============================================================================
 
 SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
-SSH_KEY_PATH="$HOME/.ssh/id_ed25519_github"
 
 # =============================================================================
 # Logging Functions
@@ -40,7 +41,7 @@ log_header() {
 log_step_header() {
     local step_num="$1"
     local step_title="$2"
-    local total_steps="${3:-10}"
+    local total_steps="${3:-9}"
     echo ""
     echo -e "${BOLD}${MAGENTA}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
     echo -e "${BOLD}${MAGENTA}┃  Step ${step_num}/${total_steps}: ${step_title}${RESET}"
@@ -79,7 +80,7 @@ wait_for_user() {
 }
 
 wait_for_completion() {
-    local message="${1:-Press Enter when you\'ve completed this step...}"
+    local message="${1:-Press Enter when you've completed this step...}"
     echo ""
     echo -e "   ${YELLOW}⏳${RESET} ${message}"
     read -rp "   "
@@ -93,189 +94,123 @@ confirm_step() {
 }
 
 # =============================================================================
-# Detection Functions - Check if steps are already completed
+# Detection Functions
 # =============================================================================
 
 is_chrome_configured() {
-    # Check if Chrome is set as default browser
-    defaults read com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers 2>/dev/null | grep -q "com.google.chrome" || return 1
-    # Check if Chrome is installed
-    [[ -d "/Applications/Google Chrome.app" ]] || return 1
+    [[ -d "/Applications/Google Chrome.app" ]] && \
+    defaults read com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers 2>/dev/null | grep -q "com.google.chrome"
 }
 
 is_github_configured() {
-    # Check if GitHub CLI is authenticated
     command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1
 }
 
-is_ssh_key_configured() {
-    # Check if SSH key exists and is added to GitHub
-    [[ -f "$SSH_KEY_PATH" ]] || return 1
-    # Test SSH connection to GitHub
-    ssh -T git@github.com -o StrictHostKeyChecking=no -o ConnectTimeout=5 &>/dev/null
-}
-
 is_1password_configured() {
-    # Check if 1Password is installed and running
-    [[ -d "/Applications/1Password.app" ]] && pgrep -f "1Password" >/dev/null 2>&1
+    [[ -d "/Applications/1Password.app" ]]
 }
 
-is_aws_console_configured() {
-    # Check if AWS credentials directory exists (indicates AWS Console has been used)
+is_aws_configured() {
     [[ -d "$HOME/.aws" ]] && [[ -f "$HOME/.aws/credentials" || -f "$HOME/.aws/config" ]]
 }
 
-is_aws_cli_configured() {
-    # Check if AWS CLI is configured and can list identities
-    command -v aws &>/dev/null && aws sts get-caller-identity &>/dev/null 2>&1
+is_cursor_configured() {
+    local cursor_cli="/Applications/Cursor.app/Contents/Resources/app/bin/cursor"
+    [[ -x "$cursor_cli" ]] && [[ $("$cursor_cli" --list-extensions 2>/dev/null | wc -l | tr -d ' ') -gt 0 ]]
 }
 
-is_cursor_configured() {
-    # Check if Cursor is installed and has extensions installed
-    local cursor_cli="/Applications/Cursor.app/Contents/Resources/app/bin/cursor"
-    [[ -x "$cursor_cli" ]] || return 1
-    # Check if at least some expected extensions are installed
-    local ext_count
-    ext_count=$("$cursor_cli" --list-extensions 2>/dev/null | wc -l | tr -d ' ')
-    [[ $ext_count -gt 0 ]]
+is_docker_configured() {
+    [[ -d "/Applications/Docker.app" ]] && pgrep -f "Docker Desktop" >/dev/null 2>&1
 }
 
 is_linear_configured() {
-    # Check if Linear is installed
     [[ -d "/Applications/Linear.app" ]]
 }
 
 is_slack_configured() {
-    # Check if Slack is installed
     [[ -d "/Applications/Slack.app" ]]
 }
 
-is_claude_code_configured() {
-    # Check if Claude Code is installed and has API key configured
-    command -v claude &>/dev/null || return 1
-    # Check if ANTHROPIC_API_KEY is set in shell config or environment
-    [[ -n "${ANTHROPIC_API_KEY:-}" ]] || grep -q "ANTHROPIC_API_KEY" "$HOME/.zshrc" 2>/dev/null || grep -q "ANTHROPIC_API_KEY" "$HOME/.config/nix-config/local/secrets.nix" 2>/dev/null
-}
-
-is_codex_configured() {
-    # Check if Codex is installed and has API key configured
-    command -v codex &>/dev/null || return 1
-    # Check if OPENAI_API_KEY is set in shell config or environment
-    [[ -n "${OPENAI_API_KEY:-}" ]] || grep -q "OPENAI_API_KEY" "$HOME/.zshrc" 2>/dev/null || grep -q "OPENAI_API_KEY" "$HOME/.config/nix-config/local/secrets.nix" 2>/dev/null
-}
-
 is_ai_assistants_configured() {
-    # Check if both AI coding assistants are configured
-    is_claude_code_configured && is_codex_configured
+    command -v claude &>/dev/null && command -v codex &>/dev/null
 }
 
 # =============================================================================
-# Step 1: Google Chrome Setup
+# Step 1: Chrome Setup
 # =============================================================================
 
 setup_chrome() {
-    log_step_header "1" "Google Chrome - Default Browser & Account Setup"
+    log_step_header "1" "Google Chrome - Default Browser Setup"
 
-    # Check if already configured
     if is_chrome_configured; then
-        log_success "Chrome appears to be already configured!"
-        log_info "Chrome is set as default browser and installed."
+        log_success "Chrome is already configured as default browser!"
         if ! confirm_step "Do you want to reconfigure Chrome?"; then
             log_info "Skipping Chrome setup"
             return 0
         fi
     fi
 
-    log_info "Google Chrome will be configured as your default browser."
-    log_info "You'll sign in with your Saris Google account."
+    log_info "Setting up Chrome as your default browser."
     echo ""
 
-    # Set Chrome as default browser via command line
-    log_action "Setting Chrome as default browser..."
+    log_action "Opening Chrome..."
     if [[ -d "/Applications/Google Chrome.app" ]]; then
-        # Open Chrome first to ensure it's registered as a browser
         open -a "Google Chrome" "chrome://settings/people" --args --make-default-browser 2>/dev/null || true
         sleep 2
-        log_success "Chrome opened and set as default browser candidate"
+        log_success "Chrome opened"
     else
-        log_warning "Google Chrome not found. It may still be installing."
+        log_warning "Chrome not found. It may still be installing."
         wait_for_user "Press Enter after Chrome is installed..."
-        open -a "Google Chrome" "chrome://settings/people" --args --make-default-browser 2>/dev/null || true
+        open -a "Google Chrome" 2>/dev/null || true
     fi
 
     echo ""
-    log_info "Please complete the following in Chrome:"
-    echo ""
-    log_step "1. Sign in with your ${BOLD}$USER@saris.ai${RESET} account"
-    log_step "2. When prompted, click ${BOLD}'Turn on sync'${RESET} to sync Chrome with Google"
-    log_step "3. Go to Settings → On startup → Open a specific page"
-    log_step "4. Add ${BOLD}https://mail.google.com/${RESET} as your startup page"
-    echo ""
-    log_info "Opening Chrome startup settings..."
-    sleep 1
-    # Use AppleScript to open chrome:// internal URLs
-    osascript -e 'tell application "Google Chrome" to open location "chrome://settings/onStartup"' 2>/dev/null || true
+    log_info "Please complete Chrome setup:"
+    log_step "1. Sign in with your Google account (if desired)"
+    log_step "2. Set Chrome as default browser if prompted"
+    log_step "3. Configure any sync or startup preferences"
 
-    wait_for_completion "Press Enter when Chrome is signed in and configured..."
+    wait_for_completion
 
-    # Verify Chrome is default
     if defaults read com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers 2>/dev/null | grep -q "com.google.chrome"; then
         log_success "Chrome is configured as default browser"
     else
-        log_warning "You may need to confirm Chrome as default browser in System Settings"
+        log_warning "Chrome may not be set as default"
         log_step "Go to: System Settings → Desktop & Dock → Default web browser"
     fi
 
-    log_success "Step 1 complete: Chrome is set up!"
+    log_success "Step 1 complete!"
 }
 
 # =============================================================================
-# Step 2: GitHub Web Login & CLI Authentication
+# Step 2: GitHub CLI Setup
 # =============================================================================
 
 setup_github() {
-    log_step_header "2" "GitHub - Web Login & CLI Authentication"
+    log_step_header "2" "GitHub CLI - Authentication"
 
-    # Check if already configured
     if is_github_configured; then
-        log_success "GitHub CLI appears to be already authenticated!"
-        if ! confirm_step "Do you want to re-authenticate GitHub?"; then
-            log_info "Skipping GitHub setup"
+        log_success "GitHub CLI is already authenticated!"
+        if ! confirm_step "Do you want to re-authenticate?"; then
+            log_info "Skipping GitHub CLI setup"
             return 0
         fi
     fi
 
-    log_info "You'll sign into GitHub via the web browser first,"
-    log_info "then authenticate the GitHub CLI (gh) for terminal access."
-    echo ""
-
-    # Open GitHub login page
-    log_action "Opening GitHub login page..."
-    open "https://github.com/login"
-
-    echo ""
-    log_info "Please sign in to GitHub in Chrome."
-    log_step "Use your existing GitHub account"
-    log_step "Complete any 2FA verification if prompted"
-
-    wait_for_completion "Press Enter when you're signed into GitHub..."
-
-    log_success "GitHub web login complete"
-    echo ""
-
-    # Authenticate GitHub CLI
-    log_action "Now authenticating GitHub CLI..."
+    log_info "Authenticating GitHub CLI for terminal access."
+    log_info "Note: SSH keys were configured during setup.sh"
     echo ""
 
     if ! command -v gh &>/dev/null; then
-        log_error "GitHub CLI (gh) not found. Please restart your terminal and try again."
+        log_error "GitHub CLI (gh) not found. Restart your terminal and try again."
         return 1
     fi
 
     if gh auth status &>/dev/null; then
         log_success "GitHub CLI is already authenticated"
     else
-        log_info "The GitHub CLI will now authenticate via your browser."
+        log_info "Authenticating GitHub CLI via web browser..."
+        echo ""
         log_step "Choose: ${BOLD}GitHub.com${RESET}"
         log_step "Choose: ${BOLD}HTTPS${RESET} (recommended)"
         log_step "Choose: ${BOLD}Login with a web browser${RESET}"
@@ -290,199 +225,28 @@ setup_github() {
         fi
     fi
 
-    log_success "Step 2 complete: GitHub is set up!"
+    log_success "Step 2 complete!"
 }
 
 # =============================================================================
-# Step 3: SSH Key Generation for GitHub
-# =============================================================================
-
-setup_ssh_key() {
-    log_step_header "3" "SSH Key - Generate & Add to GitHub"
-
-    # Check if already configured
-    if is_ssh_key_configured; then
-        log_success "SSH key appears to be already configured and working!"
-        log_info "SSH key exists and GitHub connection is working."
-        if ! confirm_step "Do you want to regenerate or reconfigure SSH key?"; then
-            log_info "Skipping SSH key setup"
-            return 0
-        fi
-    fi
-
-    log_info "An SSH key provides secure authentication for Git operations."
-    echo ""
-
-    local generate_new=true
-
-    if [[ -f "$SSH_KEY_PATH" ]]; then
-        log_warning "An SSH key already exists at: $SSH_KEY_PATH"
-        if ! confirm_step "Generate a new SSH key?"; then
-            generate_new=false
-            log_info "Using existing SSH key"
-        fi
-    fi
-
-    if [[ "$generate_new" == true ]]; then
-        # Get email for key
-        local git_email
-        git_email=$(git config --global user.email 2>/dev/null || echo "")
-
-        if [[ -z "$git_email" ]]; then
-            echo ""
-            read -rp "   Enter your email for the SSH key: " git_email
-        fi
-
-        log_action "Generating SSH key..."
-        ssh-keygen -t ed25519 -C "$git_email" -f "$SSH_KEY_PATH" -N ""
-        log_success "SSH key generated at $SSH_KEY_PATH"
-
-        # Configure SSH
-        configure_ssh_config
-    fi
-
-    # Copy key to clipboard and add to GitHub
-    echo ""
-    log_action "Copying SSH public key to clipboard..."
-    if command -v pbcopy &>/dev/null; then
-        pbcopy < "$SSH_KEY_PATH.pub"
-        log_success "SSH public key copied to clipboard"
-    fi
-
-    echo ""
-    echo -e "${DIM}────────────────────────────────────────────────────────────${RESET}"
-    echo -e "${BOLD}Your SSH public key:${RESET}"
-    echo ""
-    cat "$SSH_KEY_PATH.pub"
-    echo ""
-    echo -e "${DIM}────────────────────────────────────────────────────────────${RESET}"
-    echo ""
-
-    # Add key to GitHub
-    log_action "Opening GitHub SSH settings..."
-    open "https://github.com/settings/ssh/new"
-
-    echo ""
-    log_info "Add your SSH key to GitHub:"
-    log_step "1. The key is already copied to your clipboard"
-    log_step "2. Paste it into the ${BOLD}'Key'${RESET} field"
-    log_step "3. Give it a title (e.g., 'MacBook - Saris')"
-    log_step "4. Click ${BOLD}'Add SSH key'${RESET}"
-
-    wait_for_completion "Press Enter when you've added the key to GitHub..."
-
-    # Test SSH connection
-    test_github_ssh
-
-    # Test with a private repository
-    test_private_repo
-
-    log_success "Step 3 complete: SSH key is configured!"
-}
-
-configure_ssh_config() {
-    local ssh_config="$HOME/.ssh/config"
-
-    if [[ -f "$ssh_config" ]] && grep -q "Host github.com" "$ssh_config"; then
-        log_info "SSH config already contains GitHub entry"
-        return 0
-    fi
-
-    mkdir -p "$HOME/.ssh"
-    cat >> "$ssh_config" <<EOF
-
-# GitHub
-Host github.com
-    HostName github.com
-    User git
-    IdentityFile $SSH_KEY_PATH
-    IdentitiesOnly yes
-EOF
-    chmod 600 "$ssh_config"
-    log_success "SSH config updated for GitHub"
-}
-
-test_github_ssh() {
-    log_action "Testing SSH connection to GitHub..."
-    echo ""
-
-    # Add GitHub to known hosts if not present
-    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-
-    local ssh_output
-    ssh_output=$(ssh -T git@github.com 2>&1 || true)
-
-    if echo "$ssh_output" | grep -q "successfully authenticated"; then
-        log_success "SSH authentication successful!"
-        echo "$ssh_output" | grep "successfully authenticated" | sed 's/^/   /'
-    else
-        log_warning "SSH test output:"
-        echo "$ssh_output" | head -3 | sed 's/^/   /'
-    fi
-}
-
-test_private_repo() {
-    echo ""
-    log_info "Let's test access to a private repository."
-    echo ""
-
-    # Get user's repos via gh CLI
-    if command -v gh &>/dev/null && gh auth status &>/dev/null; then
-        log_action "Fetching your private repositories..."
-
-        local repos
-        repos=$(gh repo list --visibility private --limit 5 --json nameWithOwner --jq '.[].nameWithOwner' 2>/dev/null || echo "")
-
-        if [[ -n "$repos" ]]; then
-            echo ""
-            log_info "Your private repositories:"
-            echo "$repos" | head -5 | while read -r repo; do
-                log_step "$repo"
-            done
-            echo ""
-
-            local first_repo
-            first_repo=$(echo "$repos" | head -1)
-
-            log_action "Testing SSH access to: $first_repo"
-            if git ls-remote "git@github.com:$first_repo.git" HEAD &>/dev/null; then
-                log_success "SSH access to private repository confirmed!"
-            else
-                log_warning "Could not access repository via SSH. You may need to wait a moment."
-            fi
-        else
-            log_info "No private repositories found, or gh CLI not authenticated."
-            log_step "You can test manually: git clone git@github.com:your-org/your-repo.git"
-        fi
-    else
-        log_info "GitHub CLI not authenticated. Skipping private repo test."
-        log_step "You can test manually: git clone git@github.com:your-org/your-repo.git"
-    fi
-}
-
-# =============================================================================
-# Step 4: 1Password Setup
+# Step 3: 1Password Setup
 # =============================================================================
 
 setup_1password() {
-    log_step_header "4" "1Password - Password Manager Setup"
+    log_step_header "3" "1Password - Password Manager Setup"
 
-    # Check if already configured
     if is_1password_configured; then
-        log_success "1Password appears to be already configured!"
-        log_info "1Password is installed and running."
+        log_success "1Password is already installed!"
         if ! confirm_step "Do you want to reconfigure 1Password?"; then
             log_info "Skipping 1Password setup"
             return 0
         fi
     fi
 
-    log_info "1Password is your secure password manager."
-    log_info "You'll sign in with your Google account."
+    log_info "1Password is your secure password and secrets manager."
     echo ""
 
     log_action "Opening 1Password..."
-
     if [[ -d "/Applications/1Password.app" ]]; then
         open -a "1Password"
     else
@@ -492,143 +256,99 @@ setup_1password() {
     fi
 
     echo ""
-    log_info "Please complete the 1Password setup:"
-    log_step "1. Click ${BOLD}'Sign in'${RESET}"
-    log_step "2. Choose ${BOLD}'Sign in with Google'${RESET}"
-    log_step "3. Use your ${BOLD}$USER@saris.ai${RESET} account"
-    log_step "4. Complete any additional verification"
-    log_step "5. Set up biometric unlock (Touch ID) if prompted"
+    log_info "Please complete 1Password setup:"
+    log_step "1. Sign in to your 1Password account"
+    log_step "2. Set up browser extensions (if desired)"
+    log_step "3. Configure unlock preferences"
+    log_step "4. Enable SSH key management (optional but recommended)"
 
-    wait_for_completion "Press Enter when 1Password is set up..."
-
-    log_success "Step 4 complete: 1Password is configured!"
+    wait_for_completion
+    log_success "Step 3 complete!"
 }
 
 # =============================================================================
-# Step 5: AWS Console Setup
+# Step 4: AWS Setup
 # =============================================================================
 
-setup_aws_console() {
-    log_step_header "5" "AWS Console - Sign In & 2FA Setup"
+setup_aws() {
+    log_step_header "4" "AWS - Console & CLI Setup"
 
-    # Check if already configured
-    if is_aws_console_configured; then
-        log_success "AWS Console appears to be already configured!"
-        log_info "AWS credentials directory exists."
-        if ! confirm_step "Do you want to reconfigure AWS Console?"; then
-            log_info "Skipping AWS Console setup"
+    if is_aws_configured; then
+        log_success "AWS appears to be configured!"
+        if ! confirm_step "Do you want to reconfigure AWS?"; then
+            log_info "Skipping AWS setup"
             return 0
         fi
     fi
 
-    log_info "You'll sign into AWS Console and set up 2FA for security."
+    log_info "Setting up AWS Console access and CLI credentials."
     echo ""
 
+    # AWS Console
     log_action "Opening AWS Console..."
-    open "https://console.aws.amazon.com/"
+    open "https://aws.amazon.com/console/"
 
     echo ""
-    log_info "Please complete the AWS Console setup:"
-    log_step "1. Sign in with your AWS credentials"
-    log_step "   (Check 1Password for your credentials)"
-    log_step "2. If this is your first login, you may need to set a password"
-    echo ""
-    log_info "Setting up 2FA (MFA):"
-    log_step "3. Click your username in the top right → ${BOLD}'Security credentials'${RESET}"
-    log_step "4. Scroll to ${BOLD}'Multi-factor authentication (MFA)'${RESET}"
-    log_step "5. Click ${BOLD}'Assign MFA device'${RESET}"
-    log_step "6. Choose ${BOLD}'Authenticator app'${RESET}"
-    log_step "7. Use 1Password or your authenticator app to scan the QR code"
-    log_step "8. Enter two consecutive codes to verify"
+    log_info "AWS Console Setup:"
+    log_step "1. Sign in with your AWS account"
+    log_step "2. Enable MFA/2FA if required by your organization"
+    log_step "3. Verify you have access to your resources"
 
-    wait_for_completion "Press Enter when AWS Console is signed in and 2FA is configured..."
+    wait_for_completion
 
-    log_success "Step 5 complete: AWS Console is configured!"
-}
-
-# =============================================================================
-# Step 6: AWS CLI Configuration
-# =============================================================================
-
-setup_aws_cli() {
-    log_step_header "6" "AWS CLI - Command Line Configuration"
-
-    log_info "The AWS CLI allows you to interact with AWS from the terminal."
-    log_info "You'll configure it using credentials from 1Password."
+    # AWS CLI
+    log_action "Configuring AWS CLI..."
     echo ""
 
     if ! command -v aws &>/dev/null; then
-        log_error "AWS CLI not found. Please restart your terminal and try again."
+        log_error "AWS CLI not found. Restart your terminal and try again."
         return 1
     fi
 
-    # Check if already configured
-    if is_aws_cli_configured; then
-        log_success "AWS CLI appears to be already configured and working!"
-        log_info "AWS CLI can authenticate successfully."
-        if ! confirm_step "Would you like to reconfigure AWS credentials?"; then
-            log_info "Skipping AWS CLI setup"
-            return 0
-        fi
-    fi
-
-    echo ""
-    log_info "First, get your AWS credentials from 1Password:"
-    log_step "1. Open ${BOLD}1Password${RESET}"
-    log_step "2. Search for your AWS credentials"
-    log_step "3. Copy the ${BOLD}Access Key ID${RESET} and ${BOLD}Secret Access Key${RESET}"
+    log_info "AWS CLI Configuration Methods:"
+    log_step "Option 1: ${BOLD}aws configure${RESET} - Interactive setup"
+    log_step "Option 2: ${BOLD}aws configure sso${RESET} - For SSO/IAM Identity Center"
+    log_step "Option 3: Manually edit ~/.aws/credentials and ~/.aws/config"
     echo ""
 
-    wait_for_user "Press Enter when you have your AWS credentials ready..."
-
-    log_action "Configuring AWS CLI..."
-    echo ""
-    log_info "You'll be prompted to enter:"
-    log_step "AWS Access Key ID (from 1Password)"
-    log_step "AWS Secret Access Key (from 1Password)"
-    log_step "Default region name (e.g., 'us-east-1' or 'eu-west-1')"
-    log_step "Default output format (press Enter for 'json')"
-    echo ""
-
-    aws configure
-
-    echo ""
-    # Verify configuration
-    if aws sts get-caller-identity &>/dev/null; then
-        log_success "AWS CLI configured and authenticated!"
-        log_info "Your AWS identity:"
-        aws sts get-caller-identity --output table 2>/dev/null | sed 's/^/   /'
+    if confirm_step "Do you want to run 'aws configure' now?"; then
+        aws configure
+        log_success "AWS CLI configuration complete"
     else
-        log_warning "AWS CLI configured but authentication could not be verified"
-        log_step "Check your credentials and try: aws sts get-caller-identity"
+        log_info "Skipping AWS CLI configuration"
+        log_step "Configure later with: aws configure"
     fi
 
-    log_success "Step 6 complete: AWS CLI is configured!"
+    # Test AWS CLI
+    if aws sts get-caller-identity &>/dev/null 2>&1; then
+        log_success "AWS CLI is working!"
+        aws sts get-caller-identity | grep -E "(UserId|Account|Arn)" | sed 's/^/   /'
+    else
+        log_warning "AWS CLI test failed - you may need to configure credentials"
+    fi
+
+    log_success "Step 4 complete!"
 }
 
 # =============================================================================
-# Step 7: Cursor Setup
+# Step 5: Cursor Setup
 # =============================================================================
 
 setup_cursor() {
-    log_step_header "7" "Cursor - AI Code Editor Setup"
+    log_step_header "5" "Cursor - AI Code Editor Setup"
 
-    # Check if already configured
     if is_cursor_configured; then
-        log_success "Cursor appears to be already configured!"
-        log_info "Cursor is installed and has extensions installed."
-        if ! confirm_step "Do you want to reconfigure Cursor or reinstall extensions?"; then
+        log_success "Cursor appears to be configured with extensions!"
+        if ! confirm_step "Do you want to reconfigure Cursor?"; then
             log_info "Skipping Cursor setup"
             return 0
         fi
     fi
 
-    log_info "Cursor is your AI-powered code editor."
-    log_info "You'll sign in with your Google account."
+    log_info "Cursor is an AI-powered code editor based on VS Code."
     echo ""
 
     log_action "Opening Cursor..."
-
     if [[ -d "/Applications/Cursor.app" ]]; then
         open -a "Cursor"
     else
@@ -638,85 +358,90 @@ setup_cursor() {
     fi
 
     echo ""
-    log_info "Please complete the Cursor setup:"
-    log_step "1. When Cursor opens, click ${BOLD}'Sign In'${RESET}"
-    log_step "2. Choose ${BOLD}'Sign in with Google'${RESET}"
-    log_step "3. Use your ${BOLD}$USER@saris.ai${RESET} account"
-    log_step "4. Grant any permissions requested"
+    log_info "Please complete Cursor setup:"
+    log_step "1. Sign in to Cursor (if you have an account)"
+    log_step "2. Configure your AI model preferences"
+    log_step "3. Install any additional extensions you need"
     echo ""
-    log_info "Optional: Import settings from VS Code if prompted"
+    log_info "Note: Nix config provides default settings and extensions."
+    log_info "Your custom settings are merged automatically."
 
-    wait_for_completion "Press Enter when Cursor is signed in..."
+    wait_for_completion
 
-    # Install Cursor extensions
-    log_info "Installing Cursor extensions..."
-    echo ""
-
-    # List of extensions to install
-    local extensions=(
-        # Language Support
-        "rust-lang.rust-analyzer"                    # Rust
-        "jnoortheen.nix-ide"                        # Nix
-        "hashicorp.terraform"                        # Terraform
-        "charliermarsh.ruff"                         # Python (Ruff)
-        "ms-python.python"                           # Python (base support)
-
-        # Code Quality & Formatting
-        "dbaeumer.vscode-eslint"                     # ESLint
-        "esbenp.prettier-vscode"                     # Prettier
-        "EditorConfig.EditorConfig"                  # EditorConfig
-
-        # Productivity
-        "wayou.vscode-todo-highlight"                # TODO Highlight
-
-        # DevOps & Tools
-        "ms-azuretools.vscode-docker"                 # Docker
-        "redhat.vscode-yaml"                         # YAML
-        "bradlc.vscode-tailwindcss"                  # Tailwind CSS
-        "mikestead.dotenv"                           # DotENV
-        "tamasfe.even-better-toml"                   # TOML
-        "YoavBls.pretty-ts-errors"                   # Pretty TS Errors
-    )
-
-    # Check if cursor CLI is available
+    # Install Cursor CLI if needed
     local cursor_cli="/Applications/Cursor.app/Contents/Resources/app/bin/cursor"
-    if [[ ! -x "$cursor_cli" ]]; then
-        log_warning "Cursor CLI not found at expected location"
-        log_step "Extensions will need to be installed manually from the Extensions view"
-        log_step "Search for each extension by name in Cursor's Extensions panel"
-    else
-        # Add cursor CLI to PATH for this session
-        export PATH="/Applications/Cursor.app/Contents/Resources/app/bin:$PATH"
-
-        local installed=0
-        local failed=0
-
-        # Wait a moment for Cursor to be fully ready
-        log_info "Waiting for Cursor to be ready..."
-        sleep 3
-
-        for ext in "${extensions[@]}"; do
-            "$cursor_cli" --install-extension "$ext" --force
-        done
-
-        echo ""
+    if [[ -x "$cursor_cli" ]]; then
+        log_action "Installing Cursor CLI command..."
+        if "$cursor_cli" --install-extension >/dev/null 2>&1; then
+            log_success "Cursor CLI available (run 'cursor' in terminal)"
+        fi
     fi
 
-    echo ""
-    log_success "Step 7 complete: Cursor is configured!"
+    log_success "Step 5 complete!"
 }
 
 # =============================================================================
-# Step 8: Linear Setup
+# Step 6: Docker Desktop Setup
+# =============================================================================
+
+setup_docker() {
+    log_step_header "6" "Docker Desktop - Container Platform Setup"
+
+    if is_docker_configured; then
+        log_success "Docker Desktop is already running!"
+        if ! confirm_step "Do you want to reconfigure Docker?"; then
+            log_info "Skipping Docker setup"
+            return 0
+        fi
+    fi
+
+    log_info "Docker Desktop provides container management for development."
+    echo ""
+
+    log_action "Opening Docker Desktop..."
+    if [[ -d "/Applications/Docker.app" ]]; then
+        open -a "Docker"
+    else
+        log_warning "Docker Desktop not found. It may still be installing."
+        wait_for_user "Press Enter after Docker Desktop is installed..."
+        open -a "Docker"
+    fi
+
+    echo ""
+    log_info "Please complete Docker Desktop setup:"
+    log_step "1. Accept the service agreement"
+    log_step "2. Wait for Docker daemon to start (watch the menu bar icon)"
+    log_step "3. Sign in with Docker Hub account (optional)"
+    log_step "4. Configure resource limits if needed (Settings → Resources)"
+
+    wait_for_completion
+
+    # Test Docker
+    if command -v docker &>/dev/null; then
+        log_action "Testing Docker..."
+        if docker ps &>/dev/null; then
+            log_success "Docker is running and accessible"
+        else
+            log_warning "Docker command available but daemon may not be ready"
+            log_step "Wait a moment for Docker to finish starting"
+        fi
+    else
+        log_warning "Docker CLI not yet available"
+        log_step "Restart your terminal to load Docker CLI"
+    fi
+
+    log_success "Step 6 complete!"
+}
+
+# =============================================================================
+# Step 7: Linear Setup
 # =============================================================================
 
 setup_linear() {
-    log_step_header "8" "Linear - Project Management Setup"
+    log_step_header "7" "Linear - Project Management Setup"
 
-    # Check if already configured
     if is_linear_configured; then
-        log_success "Linear appears to be already installed!"
-        log_info "Linear application is installed."
+        log_success "Linear is already installed!"
         if ! confirm_step "Do you want to reconfigure Linear?"; then
             log_info "Skipping Linear setup"
             return 0
@@ -724,11 +449,9 @@ setup_linear() {
     fi
 
     log_info "Linear is your project and issue tracking tool."
-    log_info "You'll sign in with your Google account."
     echo ""
 
     log_action "Opening Linear..."
-
     if [[ -d "/Applications/Linear.app" ]]; then
         open -a "Linear"
     else
@@ -738,28 +461,24 @@ setup_linear() {
     fi
 
     echo ""
-    log_info "Please complete the Linear setup:"
-    log_step "1. Click ${BOLD}'Sign in'${RESET} or ${BOLD}'Continue with Google'${RESET}"
-    log_step "2. Use your ${BOLD}$USER@saris.ai${RESET} account"
-    log_step "3. You should automatically join the Saris workspace"
-    log_step "4. Configure notifications if prompted"
+    log_info "Please complete Linear setup:"
+    log_step "1. Sign in to your workspace"
+    log_step "2. Configure your teams and projects"
+    log_step "3. Set up keyboard shortcuts (optional)"
 
-    wait_for_completion "Press Enter when Linear is signed in..."
-
-    log_success "Step 8 complete: Linear is configured!"
+    wait_for_completion
+    log_success "Step 7 complete!"
 }
 
 # =============================================================================
-# Step 9: Slack Setup
+# Step 8: Slack Setup
 # =============================================================================
 
 setup_slack() {
-    log_step_header "9" "Slack - Team Communication Setup"
+    log_step_header "8" "Slack - Team Communication Setup"
 
-    # Check if already configured
     if is_slack_configured; then
-        log_success "Slack appears to be already installed!"
-        log_info "Slack application is installed."
+        log_success "Slack is already installed!"
         if ! confirm_step "Do you want to reconfigure Slack?"; then
             log_info "Skipping Slack setup"
             return 0
@@ -767,11 +486,9 @@ setup_slack() {
     fi
 
     log_info "Slack is your team communication platform."
-    log_info "You'll sign in with your Google account."
     echo ""
 
     log_action "Opening Slack..."
-
     if [[ -d "/Applications/Slack.app" ]]; then
         open -a "Slack"
     else
@@ -781,251 +498,177 @@ setup_slack() {
     fi
 
     echo ""
-    log_info "Please complete the Slack setup:"
-    log_step "1. Click ${BOLD}'Sign in to Slack'${RESET}"
-    log_step "2. Enter your workspace URL or email"
-    log_step "3. Choose ${BOLD}'Sign in with Google'${RESET}"
-    log_step "4. Use your ${BOLD}$USER@saris.ai${RESET} account"
-    log_step "5. Allow the app to open when prompted"
-    echo ""
-    log_info "Tip: Pin Slack to your Dock for easy access"
+    log_info "Please complete Slack setup:"
+    log_step "1. Sign in to your workspace(s)"
+    log_step "2. Configure notification preferences"
+    log_step "3. Set your status and profile"
 
-    wait_for_completion "Press Enter when Slack is signed in..."
-
-    log_success "Step 9 complete: Slack is configured!"
+    wait_for_completion
+    log_success "Step 8 complete!"
 }
 
 # =============================================================================
-# Step 10: AI Coding Assistants Setup
+# Step 9: AI Assistants Setup
 # =============================================================================
 
 setup_ai_assistants() {
-    log_step_header "10" "AI Coding Assistants - Claude Code & Codex Setup" 10
+    log_step_header "9" "AI Coding Assistants - Claude Code & Codex"
 
-    # Check if already configured
     if is_ai_assistants_configured; then
-        log_success "AI coding assistants appear to be already configured!"
-        log_info "Both Claude Code and Codex have API keys configured."
-        if ! confirm_step "Do you want to reconfigure the AI assistants?"; then
+        log_success "AI assistants are already configured!"
+        if ! confirm_step "Do you want to reconfigure AI assistants?"; then
             log_info "Skipping AI assistants setup"
             return 0
         fi
     fi
 
-    log_info "AI coding assistants help you write code faster with AI."
-    log_info "You'll need API keys from Anthropic and OpenAI."
+    log_info "Claude Code and Codex are AI coding assistants in your terminal."
     echo ""
 
-    # -------------------------------------------------------------------------
-    # Claude Code Setup
-    # -------------------------------------------------------------------------
-    echo -e "${BOLD}${CYAN}Claude Code (Anthropic)${RESET}"
-    echo ""
+    # Claude Code
+    if command -v claude &>/dev/null; then
+        log_success "Claude Code is installed"
 
-    if ! command -v claude &>/dev/null; then
-        log_warning "Claude Code CLI not found. Run 'home-manager switch' first."
-    else
-        log_success "Claude Code CLI is installed"
+        if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+            echo ""
+            log_action "Setting up Claude Code API key..."
+            log_step "Get your API key from: https://console.anthropic.com/settings/keys"
+            echo ""
 
-        if is_claude_code_configured; then
-            log_success "Claude Code appears to be already configured"
-            if ! confirm_step "Reconfigure Claude Code?"; then
-                log_info "Keeping existing Claude Code configuration"
+            if confirm_step "Do you have an Anthropic API key?"; then
+                echo ""
+                read -rsp "   Enter your Anthropic API key: " api_key
+                echo ""
+
+                if [[ -n "$api_key" ]]; then
+                    # Add to secrets.nix if it exists
+                    local secrets_file="$HOME/.config/nix-config/local/secrets.nix"
+                    if [[ -f "$secrets_file" ]]; then
+                        # Check if ANTHROPIC_API_KEY already exists
+                        if grep -q "ANTHROPIC_API_KEY" "$secrets_file"; then
+                            log_info "ANTHROPIC_API_KEY already in secrets.nix - update it manually if needed"
+                        else
+                            echo "" >> "$secrets_file"
+                            echo "  # Anthropic API Key for Claude Code" >> "$secrets_file"
+                            echo "  home.sessionVariables.ANTHROPIC_API_KEY = \"$api_key\";" >> "$secrets_file"
+                            log_success "Added ANTHROPIC_API_KEY to secrets.nix"
+                        fi
+                    else
+                        # Add to .zshrc as fallback
+                        if ! grep -q "ANTHROPIC_API_KEY" "$HOME/.zshrc" 2>/dev/null; then
+                            echo "" >> "$HOME/.zshrc"
+                            echo "export ANTHROPIC_API_KEY=\"$api_key\"" >> "$HOME/.zshrc"
+                            log_success "Added ANTHROPIC_API_KEY to .zshrc"
+                        fi
+                    fi
+                    export ANTHROPIC_API_KEY="$api_key"
+                fi
             else
-                setup_claude_code_auth
+                log_info "Skipping Claude Code API key setup"
+                log_step "Set it later: export ANTHROPIC_API_KEY=your-key"
             fi
         else
-            setup_claude_code_auth
+            log_success "ANTHROPIC_API_KEY is already set"
         fi
+    else
+        log_warning "Claude Code not installed. Check that it's in modules/software.nix"
     fi
 
     echo ""
 
-    # -------------------------------------------------------------------------
-    # OpenAI Codex Setup
-    # -------------------------------------------------------------------------
-    echo -e "${BOLD}${CYAN}OpenAI Codex${RESET}"
-    echo ""
+    # Codex
+    if command -v codex &>/dev/null; then
+        log_success "Codex is installed"
 
-    if ! command -v codex &>/dev/null; then
-        log_warning "Codex CLI not found. Run 'home-manager switch' first."
-    else
-        log_success "Codex CLI is installed"
+        if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+            echo ""
+            log_action "Setting up Codex (OpenAI) API key..."
+            log_step "Get your API key from: https://platform.openai.com/api-keys"
+            echo ""
 
-        if is_codex_configured; then
-            log_success "Codex appears to be already configured"
-            if ! confirm_step "Reconfigure Codex?"; then
-                log_info "Keeping existing Codex configuration"
+            if confirm_step "Do you have an OpenAI API key?"; then
+                echo ""
+                read -rsp "   Enter your OpenAI API key: " api_key
+                echo ""
+
+                if [[ -n "$api_key" ]]; then
+                    # Add to secrets.nix if it exists
+                    local secrets_file="$HOME/.config/nix-config/local/secrets.nix"
+                    if [[ -f "$secrets_file" ]]; then
+                        # Check if OPENAI_API_KEY already exists
+                        if grep -q "OPENAI_API_KEY" "$secrets_file"; then
+                            log_info "OPENAI_API_KEY already in secrets.nix - update it manually if needed"
+                        else
+                            echo "" >> "$secrets_file"
+                            echo "  # OpenAI API Key for Codex" >> "$secrets_file"
+                            echo "  home.sessionVariables.OPENAI_API_KEY = \"$api_key\";" >> "$secrets_file"
+                            log_success "Added OPENAI_API_KEY to secrets.nix"
+                        fi
+                    else
+                        # Add to .zshrc as fallback
+                        if ! grep -q "OPENAI_API_KEY" "$HOME/.zshrc" 2>/dev/null; then
+                            echo "" >> "$HOME/.zshrc"
+                            echo "export OPENAI_API_KEY=\"$api_key\"" >> "$HOME/.zshrc"
+                            log_success "Added OPENAI_API_KEY to .zshrc"
+                        fi
+                    fi
+                    export OPENAI_API_KEY="$api_key"
+                fi
             else
-                setup_codex_auth
+                log_info "Skipping Codex API key setup"
+                log_step "Set it later: export OPENAI_API_KEY=your-key"
             fi
         else
-            setup_codex_auth
+            log_success "OPENAI_API_KEY is already set"
         fi
+    else
+        log_warning "Codex not installed. Check that it's in modules/software.nix"
     fi
 
     echo ""
-    log_success "Step 10 complete: AI coding assistants are configured!"
-}
-
-setup_claude_code_auth() {
-    log_info "To use Claude Code, you need an Anthropic API key."
+    log_info "Usage:"
+    log_step "• claude - Start Claude Code assistant"
+    log_step "• codex - Start OpenAI Codex assistant"
     echo ""
-    log_step "1. Go to ${BOLD}https://console.anthropic.com/settings/keys${RESET}"
-    log_step "2. Sign in or create an Anthropic account"
-    log_step "3. Click ${BOLD}'Create Key'${RESET}"
-    log_step "4. Copy the API key"
-    echo ""
+    log_warning "Restart your terminal to load environment variables"
 
-    log_action "Opening Anthropic Console..."
-    open "https://console.anthropic.com/settings/keys"
-
-    wait_for_user "Press Enter when you have your Anthropic API key..."
-
-    echo ""
-    read -rsp "   Paste your ANTHROPIC_API_KEY (input hidden): " api_key
-    echo ""
-
-    if [[ -n "$api_key" ]]; then
-        # Add to secrets file for persistence
-        local secrets_dir="$HOME/.config/nix-config/local"
-        mkdir -p "$secrets_dir"
-
-        # Check if secrets.nix exists and has the variable
-        if [[ -f "$secrets_dir/secrets.nix" ]]; then
-            if grep -q "ANTHROPIC_API_KEY" "$secrets_dir/secrets.nix"; then
-                log_info "Updating existing ANTHROPIC_API_KEY in secrets.nix"
-                sed -i '' "s|ANTHROPIC_API_KEY = \".*\"|ANTHROPIC_API_KEY = \"$api_key\"|" "$secrets_dir/secrets.nix"
-            else
-                log_info "Adding ANTHROPIC_API_KEY to secrets.nix"
-                # Add before the closing brace
-                sed -i '' '/^}$/i\
-  home.sessionVariables.ANTHROPIC_API_KEY = "'"$api_key"'";
-' "$secrets_dir/secrets.nix"
-            fi
-        else
-            log_warning "secrets.nix not found. Adding to .zshrc instead."
-            echo "" >> "$HOME/.zshrc"
-            echo "# Claude Code API Key" >> "$HOME/.zshrc"
-            echo "export ANTHROPIC_API_KEY=\"$api_key\"" >> "$HOME/.zshrc"
-        fi
-
-        # Export for current session
-        export ANTHROPIC_API_KEY="$api_key"
-        log_success "Anthropic API key configured"
-
-        # Test the configuration
-        log_action "Testing Claude Code..."
-        if claude --version &>/dev/null; then
-            log_success "Claude Code is ready to use!"
-            log_step "Run ${CYAN}claude${RESET} to start"
-        else
-            log_warning "Claude Code installed but couldn't verify. Try running 'claude' manually."
-        fi
-    else
-        log_warning "No API key provided. You can configure it later."
-        log_step "Set ANTHROPIC_API_KEY in your environment or secrets.nix"
-    fi
-}
-
-setup_codex_auth() {
-    log_info "To use Codex, you need an OpenAI API key."
-    echo ""
-    log_step "1. Go to ${BOLD}https://platform.openai.com/api-keys${RESET}"
-    log_step "2. Sign in or create an OpenAI account"
-    log_step "3. Click ${BOLD}'Create new secret key'${RESET}"
-    log_step "4. Copy the API key"
-    echo ""
-
-    log_action "Opening OpenAI Platform..."
-    open "https://platform.openai.com/api-keys"
-
-    wait_for_user "Press Enter when you have your OpenAI API key..."
-
-    echo ""
-    read -rsp "   Paste your OPENAI_API_KEY (input hidden): " api_key
-    echo ""
-
-    if [[ -n "$api_key" ]]; then
-        # Add to secrets file for persistence
-        local secrets_dir="$HOME/.config/nix-config/local"
-        mkdir -p "$secrets_dir"
-
-        # Check if secrets.nix exists and has the variable
-        if [[ -f "$secrets_dir/secrets.nix" ]]; then
-            if grep -q "OPENAI_API_KEY" "$secrets_dir/secrets.nix"; then
-                log_info "Updating existing OPENAI_API_KEY in secrets.nix"
-                sed -i '' "s|OPENAI_API_KEY = \".*\"|OPENAI_API_KEY = \"$api_key\"|" "$secrets_dir/secrets.nix"
-            else
-                log_info "Adding OPENAI_API_KEY to secrets.nix"
-                # Add before the closing brace
-                sed -i '' '/^}$/i\
-  home.sessionVariables.OPENAI_API_KEY = "'"$api_key"'";
-' "$secrets_dir/secrets.nix"
-            fi
-        else
-            log_warning "secrets.nix not found. Adding to .zshrc instead."
-            echo "" >> "$HOME/.zshrc"
-            echo "# OpenAI Codex API Key" >> "$HOME/.zshrc"
-            echo "export OPENAI_API_KEY=\"$api_key\"" >> "$HOME/.zshrc"
-        fi
-
-        # Export for current session
-        export OPENAI_API_KEY="$api_key"
-        log_success "OpenAI API key configured"
-
-        # Test the configuration
-        log_action "Testing Codex..."
-        if codex --version &>/dev/null; then
-            log_success "Codex is ready to use!"
-            log_step "Run ${CYAN}codex${RESET} to start"
-        else
-            log_warning "Codex installed but couldn't verify. Try running 'codex' manually."
-        fi
-    else
-        log_warning "No API key provided. You can configure it later."
-        log_step "Set OPENAI_API_KEY in your environment or secrets.nix"
-    fi
+    wait_for_completion
+    log_success "Step 9 complete!"
 }
 
 # =============================================================================
-# Completion
+# Show Completion Message
 # =============================================================================
 
 show_completion() {
-    log_header "🎉 Onboarding Complete!"
+    log_header "🎉 Application Setup Complete!"
 
     echo ""
     log_success "All applications have been configured!"
     echo ""
 
-    echo -e "${BOLD}Summary of what's set up:${RESET}"
-    echo ""
-    log_step "✓ Google Chrome - Default browser, synced with Google"
-    log_step "✓ GitHub - Web login + CLI (gh) authenticated"
-    log_step "✓ SSH Key - Generated and added to GitHub"
-    log_step "✓ 1Password - Password manager configured"
-    log_step "✓ AWS Console - Signed in with 2FA"
-    log_step "✓ AWS CLI - Credentials configured"
-    log_step "✓ Cursor - AI code editor ready"
-    log_step "✓ Linear - Project management connected"
-    log_step "✓ Slack - Team communication active"
-    log_step "✓ AI Assistants - Claude Code & Codex configured"
+    log_info "Your development environment is now ready to use."
     echo ""
 
-    echo -e "${BOLD}Quick reference commands:${RESET}"
-    echo ""
-    log_step "AWS identity:    ${CYAN}aws sts get-caller-identity${RESET}"
-    log_step "GitHub status:   ${CYAN}gh auth status${RESET}"
-    log_step "Test SSH:        ${CYAN}ssh -T git@github.com${RESET}"
-    log_step "Claude Code:     ${CYAN}claude${RESET}"
-    log_step "OpenAI Codex:    ${CYAN}codex${RESET}"
-    log_step "Update system:   ${CYAN}darwin-rebuild switch --flake .#mac --impure${RESET}"
+    log_info "Quick reference:"
+    log_step "• Chrome: Your default browser"
+    log_step "• GitHub CLI: gh auth status"
+    log_step "• 1Password: Password manager"
+    log_step "• AWS: aws sts get-caller-identity"
+    log_step "• Cursor: AI code editor (cursor command)"
+    log_step "• Docker: Container platform (docker ps)"
+    log_step "• Linear: Project management"
+    log_step "• Slack: Team communication"
+    log_step "• AI Assistants: claude, codex commands"
     echo ""
 
-    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${BOLD}${GREEN}  Welcome to Saris! Your workstation is ready. 🚀${RESET}"
-    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    log_info "Useful commands:"
+    log_step "• ./update.sh - Update your Nix configuration"
+    log_step "• darwin-rebuild switch --flake .#mac - Rebuild system manually"
+    log_step "• brew upgrade - Update Homebrew packages"
+    echo ""
+
+    log_warning "Start a new terminal session to load all environment changes!"
     echo ""
 }
 
@@ -1034,99 +677,48 @@ show_completion() {
 # =============================================================================
 
 main() {
-    log_header "🖥️  Saris Workstation Onboarding"
+    log_header "📱 Application Onboarding"
 
     echo ""
-    log_info "This script will guide you through setting up all your applications."
-    log_info "Each step builds on the previous one, so please complete them in order."
+    log_info "This wizard will help you set up your installed applications."
+    echo ""
+    log_info "Applications to configure:"
+    log_step "1. Google Chrome (default browser)"
+    log_step "2. GitHub CLI (gh authentication)"
+    log_step "3. 1Password (password manager)"
+    log_step "4. AWS (console & CLI)"
+    log_step "5. Cursor (AI code editor)"
+    log_step "6. Docker Desktop (containers)"
+    log_step "7. Linear (project management)"
+    log_step "8. Slack (team communication)"
+    log_step "9. AI Assistants (Claude Code & Codex)"
     echo ""
 
-    # Check what's already configured
-    local configured_steps=()
-    local pending_steps=()
+    log_warning "Note: Git and SSH keys were configured during setup.sh"
+    log_step "If you need to reconfigure those, run: ./setup.sh"
+    echo ""
 
-    if is_chrome_configured; then
-        configured_steps+=("1. Google Chrome ✓")
-    else
-        pending_steps+=("1. Google Chrome (default browser + account sync)")
-    fi
+    # Check status
+    local configured_count=0
+    is_chrome_configured && ((configured_count++)) || true
+    is_github_configured && ((configured_count++)) || true
+    is_1password_configured && ((configured_count++)) || true
+    is_aws_configured && ((configured_count++)) || true
+    is_cursor_configured && ((configured_count++)) || true
+    is_docker_configured && ((configured_count++)) || true
+    is_linear_configured && ((configured_count++)) || true
+    is_slack_configured && ((configured_count++)) || true
+    is_ai_assistants_configured && ((configured_count++)) || true
 
-    if is_github_configured; then
-        configured_steps+=("2. GitHub ✓")
-    else
-        pending_steps+=("2. GitHub (web login + CLI authentication)")
-    fi
-
-    if is_ssh_key_configured; then
-        configured_steps+=("3. SSH Key ✓")
-    else
-        pending_steps+=("3. SSH Key (for secure Git access)")
-    fi
-
-    if is_1password_configured; then
-        configured_steps+=("4. 1Password ✓")
-    else
-        pending_steps+=("4. 1Password (password manager)")
-    fi
-
-    if is_aws_console_configured; then
-        configured_steps+=("5. AWS Console ✓")
-    else
-        pending_steps+=("5. AWS Console (cloud access + 2FA)")
-    fi
-
-    if is_aws_cli_configured; then
-        configured_steps+=("6. AWS CLI ✓")
-    else
-        pending_steps+=("6. AWS CLI (command line tools)")
-    fi
-
-    if is_cursor_configured; then
-        configured_steps+=("7. Cursor ✓")
-    else
-        pending_steps+=("7. Cursor (AI code editor)")
-    fi
-
-    if is_linear_configured; then
-        configured_steps+=("8. Linear ✓")
-    else
-        pending_steps+=("8. Linear (project management)")
-    fi
-
-    if is_slack_configured; then
-        configured_steps+=("9. Slack ✓")
-    else
-        pending_steps+=("9. Slack (team communication)")
-    fi
-
-    if is_ai_assistants_configured; then
-        configured_steps+=("10. AI Assistants ✓")
-    else
-        pending_steps+=("10. AI Assistants (Claude Code & Codex)")
-    fi
-
-    # Show status summary
-    if [[ ${#configured_steps[@]} -gt 0 ]]; then
-        log_success "Already configured (${#configured_steps[@]}/10):"
-        for step in "${configured_steps[@]}"; do
-            log_step "$step"
-        done
+    if [[ $configured_count -eq 9 ]]; then
+        log_success "All applications appear to be configured already!"
         echo ""
-    fi
-
-    if [[ ${#pending_steps[@]} -gt 0 ]]; then
-        log_info "Pending setup (${#pending_steps[@]}/10):"
-        for step in "${pending_steps[@]}"; do
-            log_step "$step"
-        done
-        echo ""
-    else
-        log_success "All steps are already configured!"
-        echo ""
-        if ! confirm_step "Do you want to reconfigure any steps?"; then
+        if ! confirm_step "Do you want to run through setup again?"; then
             log_info "Onboarding complete. Exiting."
             exit 0
         fi
+    else
+        log_info "Detected: $configured_count/9 applications already configured"
     fi
 
     if ! confirm_step "Ready to begin?"; then
@@ -1134,14 +726,13 @@ main() {
         exit 0
     fi
 
-    # Run each step in order
+    # Run each step
     setup_chrome
     setup_github
-    setup_ssh_key
     setup_1password
-    setup_aws_console
-    setup_aws_cli
+    setup_aws
     setup_cursor
+    setup_docker
     setup_linear
     setup_slack
     setup_ai_assistants
@@ -1151,4 +742,3 @@ main() {
 }
 
 main "$@"
-
