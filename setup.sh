@@ -1222,6 +1222,15 @@ main() {
     log_section "Local Configuration"
     generate_local_config
 
+    # Phase 3.5: Update flake lock to get latest package versions
+    log_section "Updating Dependencies"
+    log_info "Updating flake lock file to get latest package versions..."
+    if nix flake update; then
+        log_success "Flake lock updated with latest versions"
+    else
+        log_warning "Failed to update flake lock, continuing with existing versions"
+    fi
+
     # Phase 4: Build and activate system
     log_section "Building System"
     build_system
