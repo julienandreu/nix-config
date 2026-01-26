@@ -21,7 +21,7 @@
 
     brews = [
       "displayplacer" # CLI tool to configure display resolutions
-      "julienandreu/tap/git-sweep" # CLI tool to clean-up non active branches (from custom tap)
+      "git-sweep" # CLI tool to clean-up non active branches (from julienandreu/tap)
     ];
 
     casks = [
