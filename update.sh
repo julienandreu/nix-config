@@ -207,9 +207,19 @@ main() {
     echo -e "${BOLD}${GREEN}  ✓ Update complete${RESET}"
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    log_warning "Start a new terminal session to load shell changes!"
-    log_step "Close this terminal and open a new one, or run: exec zsh"
+
+    log_warning "Shell restart recommended to load updated packages"
     echo ""
+    read -rp "   Restart shell now? (Y/n): " restart_shell
+    restart_shell="${restart_shell:-y}"
+
+    if [[ "$restart_shell" =~ ^[Yy]$ ]]; then
+        log_info "Restarting shell..."
+        exec zsh
+    else
+        log_warning "Remember to restart your terminal or run: exec zsh"
+        echo ""
+    fi
 }
 
 main "$@"

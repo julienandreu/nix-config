@@ -1313,16 +1313,25 @@ main() {
     show_final_steps
     run_onboarding
 
-    # Final message - don't block on user input to avoid hanging processes
+    # Final message with option to restart shell
     echo ""
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "${BOLD}${GREEN}  🎉 Setup complete! Start a new terminal to use your shell.${RESET}"
+    echo -e "${BOLD}${GREEN}  🎉 Setup complete!${RESET}"
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
 
-    # Exit cleanly instead of exec zsh to avoid hanging processes
-    # User should start a new terminal session themselves
-    exit 0
+    log_warning "Shell restart required to use new packages (Starship, etc.)"
+    echo ""
+    read -rp "   Restart shell now? (Y/n): " restart_shell
+    restart_shell="${restart_shell:-y}"
+
+    if [[ "$restart_shell" =~ ^[Yy]$ ]]; then
+        log_info "Restarting shell..."
+        exec zsh
+    else
+        log_warning "Remember to restart your terminal or run: exec zsh"
+        exit 0
+    fi
 }
 
 main "$@"
