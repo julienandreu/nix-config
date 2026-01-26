@@ -15,7 +15,7 @@
     };
 
     taps = [
-      # "oneleet/tap" # Commented out - might be private/internal
+      "oneleet/tap"
     ];
 
     brews = [
@@ -30,7 +30,7 @@
       "google-chrome"
       "karabiner-elements"
       "linear-linear"
-      # "oneleet-agent" # Commented out - requires oneleet/tap
+      "oneleet-agent"
       "slack"
     ];
   };
