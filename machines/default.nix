@@ -16,10 +16,12 @@
 
     taps = [
       "oneleet/tap"
+      "julienandreu/tap"
     ];
 
     brews = [
       "displayplacer" # CLI tool to configure display resolutions
+      "git-sweep" # CLI tool to clean-up non active branches
     ];
 
     casks = [
