@@ -40,7 +40,7 @@
 
     # Copy entire nvim config directory (includes lazy.nvim setup and all plugins)
     # Plugins will be automatically installed by lazy.nvim on first launch
-    extraLuaConfig = ''
+    initLua = ''
       -- Config is loaded from ~/.config/nvim/init.lua
       -- which loads the config module structure
     '';
