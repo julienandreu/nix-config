@@ -368,13 +368,59 @@ setup_cursor() {
 
     wait_for_completion
 
-    # Install Cursor CLI if needed
+    # Install Cursor extensions
+    log_info "Installing Cursor extensions..."
+    echo ""
+
+    # List of extensions to install
+    local extensions=(
+        # Language Support
+        "rust-lang.rust-analyzer"                    # Rust
+        "jnoortheen.nix-ide"                        # Nix
+        "hashicorp.terraform"                        # Terraform
+        "charliermarsh.ruff"                         # Python (Ruff)
+        "ms-python.python"                           # Python (base support)
+
+        # Code Quality & Formatting
+        "dbaeumer.vscode-eslint"                     # ESLint
+        "esbenp.prettier-vscode"                     # Prettier
+        "EditorConfig.EditorConfig"                  # EditorConfig
+
+        # Productivity
+        "wayou.vscode-todo-highlight"                # TODO Highlight
+
+        # DevOps & Tools
+        "ms-azuretools.vscode-docker"                 # Docker
+        "redhat.vscode-yaml"                         # YAML
+        "bradlc.vscode-tailwindcss"                  # Tailwind CSS
+        "mikestead.dotenv"                           # DotENV
+        "tamasfe.even-better-toml"                   # TOML
+        "YoavBls.pretty-ts-errors"                   # Pretty TS Errors
+    )
+
+    # Check if cursor CLI is available
     local cursor_cli="/Applications/Cursor.app/Contents/Resources/app/bin/cursor"
-    if [[ -x "$cursor_cli" ]]; then
-        log_action "Installing Cursor CLI command..."
-        if "$cursor_cli" --install-extension >/dev/null 2>&1; then
-            log_success "Cursor CLI available (run 'cursor' in terminal)"
-        fi
+    if [[ ! -x "$cursor_cli" ]]; then
+        log_warning "Cursor CLI not found at expected location"
+        log_step "Extensions will need to be installed manually from the Extensions view"
+        log_step "Search for each extension by name in Cursor's Extensions panel"
+    else
+        # Add cursor CLI to PATH for this session
+        export PATH="/Applications/Cursor.app/Contents/Resources/app/bin:$PATH"
+
+        local installed=0
+        local failed=0
+
+        # Wait a moment for Cursor to be fully ready
+        log_info "Waiting for Cursor to be ready..."
+        sleep 3
+
+        for ext in "${extensions[@]}"; do
+            "$cursor_cli" --install-extension "$ext" --force
+        done
+
+        echo ""
+        log_success "Cursor CLI available (run 'cursor' in terminal)"
     fi
 
     log_success "Step 5 complete!"
