@@ -168,6 +168,34 @@ main() {
     log_section "Checking Prerequisites"
     ensure_homebrew
 
+    log_section "Updating Homebrew Taps"
+    if command -v brew &>/dev/null; then
+        log_info "Ensuring custom Homebrew taps are available..."
+
+        # Tap custom repositories
+        if brew tap oneleet/tap 2>&1 | grep -v "already tapped"; then
+            log_success "Added oneleet/tap"
+        else
+            log_step "oneleet/tap already exists"
+        fi
+
+        if brew tap julienandreu/tap 2>&1 | grep -v "already tapped"; then
+            log_success "Added julienandreu/tap"
+        else
+            log_step "julienandreu/tap already exists"
+        fi
+
+        # Update taps to ensure they're current
+        log_info "Updating Homebrew and taps..."
+        if brew update --quiet 2>/dev/null; then
+            log_success "Homebrew taps updated"
+        else
+            log_warning "Homebrew tap update had issues, continuing anyway"
+        fi
+    else
+        log_warning "Homebrew not available, skipping tap setup"
+    fi
+
     log_section "Updating Dependencies"
     update_flake_lock
 
