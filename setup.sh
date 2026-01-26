@@ -1226,6 +1226,35 @@ main() {
         log_step "Install Homebrew manually later, then run: darwin-rebuild switch --flake ~/.nix-config#mac --impure"
     fi
 
+    # Phase 2.5: Pre-tap custom Homebrew taps
+    log_section "Setting up Homebrew Taps"
+    if command -v brew &>/dev/null; then
+        log_info "Adding custom Homebrew taps before system build..."
+
+        # Tap custom repositories
+        if brew tap oneleet/tap 2>&1 | grep -v "already tapped"; then
+            log_success "Added oneleet/tap"
+        else
+            log_step "oneleet/tap already exists"
+        fi
+
+        if brew tap julienandreu/tap 2>&1 | grep -v "already tapped"; then
+            log_success "Added julienandreu/tap"
+        else
+            log_step "julienandreu/tap already exists"
+        fi
+
+        # Update taps to ensure they're current
+        log_info "Updating Homebrew taps..."
+        if brew update --quiet 2>/dev/null; then
+            log_success "Homebrew taps updated"
+        else
+            log_warning "Homebrew tap update had issues, continuing anyway"
+        fi
+    else
+        log_warning "Homebrew not available, skipping tap setup"
+    fi
+
     # Phase 3: Generate local configuration
     log_section "Local Configuration"
     generate_local_config
