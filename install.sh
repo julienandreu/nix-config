@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # Configuration
-REPO_URL="git@github.com:julienandreu/nix-config.git"
+REPO_URL="https://github.com/julienandreu/nix-config.git"
 INSTALL_DIR="${NIX_CONFIG_DIR:-$HOME/.nix-config}"
 
 # Colors

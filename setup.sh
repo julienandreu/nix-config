@@ -1166,10 +1166,6 @@ main() {
     install_nix
     enable_flakes
 
-    # Fix SSL certificates (link Nix certificates to system location)
-    log_info "Removing SSL certificates..."
-    sudo rm -f /etc/ssl/certs/ca-certificates.crt
-
     # Phase 2: Install Homebrew
     log_section "Installing Homebrew"
     install_homebrew
