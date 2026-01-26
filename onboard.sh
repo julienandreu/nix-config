@@ -374,6 +374,10 @@ setup_cursor() {
 
     # List of extensions to install
     local extensions=(
+        # Theme
+        "Catppuccin.catppuccin-vsc-pack"             # Catppuccin Theme Pack
+        "Catppuccin.catppuccin-vsc-icons"            # Catppuccin Icons
+
         # Language Support
         "rust-lang.rust-analyzer"                    # Rust
         "jnoortheen.nix-ide"                        # Nix

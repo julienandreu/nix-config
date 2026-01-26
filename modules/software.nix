@@ -95,8 +95,9 @@ claude-code codex # OpenAI's lightweight coding agent
   home.file."Library/Application Support/Cursor/User/settings.json.defaults" = {
     text = builtins.toJSON ({
       # Catppuccin Theme
-      # Requires extensions: Catppuccin.catppuccin-vsc + Catppuccin.catppuccin-vsc-icons
+      # Requires extensions: Catppuccin.catppuccin-vsc-pack + Catppuccin.catppuccin-vsc-icons
       # Theme names: "Catppuccin Latte", "Catppuccin Frappé", "Catppuccin Macchiato", "Catppuccin Mocha"
+      # Automatically uses the flavor selected during setup (default: mocha)
       "workbench.colorTheme" =
         if catppuccinFlavor == "latte" then "Catppuccin Latte"
         else if catppuccinFlavor == "frappe" then "Catppuccin Frappé"
