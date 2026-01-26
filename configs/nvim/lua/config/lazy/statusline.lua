@@ -12,8 +12,10 @@ return {
 			vim.o.number = true
 			vim.o.termguicolors = true
 		end,
-		opts = {
-			show_warnings = true,
-		},
+		config = function()
+			require("modicator").setup({
+				show_warnings = true,
+			})
+		end,
 	},
 }

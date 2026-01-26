@@ -675,6 +675,7 @@ setup_cursor() {
         "bradlc.vscode-tailwindcss"                  # Tailwind CSS
         "mikestead.dotenv"                           # DotENV
         "tamasfe.even-better-toml"                   # TOML
+        "YoavBls.pretty-ts-errors"                   # Pretty TS Errors
     )
 
     # Check if cursor CLI is available
