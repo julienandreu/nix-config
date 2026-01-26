@@ -314,20 +314,42 @@ install_homebrew() {
     # Check common Homebrew locations for Apple Silicon and Intel Macs
     if [[ -x "/opt/homebrew/bin/brew" ]] || [[ -x "/usr/local/bin/brew" ]]; then
         log_success "Homebrew is already installed (not in PATH yet)"
+        # Add to PATH for current session
+        if [[ -x "/opt/homebrew/bin/brew" ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        elif [[ -x "/usr/local/bin/brew" ]]; then
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
         return 0
     fi
 
-    log_info "Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    log_info "Installing Homebrew (non-interactive mode)..."
+    # Use NONINTERACTIVE=1 to skip prompts
+    if NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+        log_success "Homebrew installation completed"
+    else
+        log_error "Homebrew installation failed"
+        log_step "You may need to install manually: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        return 1
+    fi
 
     # Add Homebrew to PATH for the current session
     if [[ -x "/opt/homebrew/bin/brew" ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
     elif [[ -x "/usr/local/bin/brew" ]]; then
         eval "$(/usr/local/bin/brew shellenv)"
+    else
+        log_error "Homebrew binary not found after installation"
+        return 1
     fi
 
-    log_success "Homebrew installed successfully"
+    # Verify Homebrew is working
+    if command -v brew &>/dev/null && brew --version &>/dev/null; then
+        log_success "Homebrew installed and verified successfully"
+    else
+        log_error "Homebrew installed but not working correctly"
+        return 1
+    fi
 }
 
 enable_flakes() {
@@ -739,15 +761,30 @@ activate_system() {
 install_node_lts() {
     log_info "Installing Node.js LTS via fnm..."
 
-    # Source fnm environment if available
+    # Source Nix environment to ensure fnm is available
     if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    fi
+
+    # Source home-manager profile to ensure fnm is in PATH
+    local hm_profile="$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+    if [[ -e "$hm_profile" ]]; then
+        . "$hm_profile"
+    fi
+
+    # Add common fnm paths explicitly
+    if [[ -d "$HOME/.nix-profile/bin" ]]; then
+        export PATH="$HOME/.nix-profile/bin:$PATH"
+    fi
+    if [[ -d "/etc/profiles/per-user/$USER/bin" ]]; then
+        export PATH="/etc/profiles/per-user/$USER/bin:$PATH"
     fi
 
     # Check if fnm is available
     if ! command -v fnm &>/dev/null; then
         log_warning "fnm not found in PATH, skipping Node.js LTS installation"
         log_step "Node.js LTS will be installed automatically on first shell startup"
+        log_step "Restart your terminal and run: fnm install --lts && fnm default lts-latest"
         return 0
     fi
 
@@ -761,9 +798,16 @@ install_node_lts() {
     fi
 
     # Install Node.js LTS
-    if fnm install --lts; then
+    log_info "Downloading and installing Node.js LTS..."
+    if fnm install --lts 2>&1 | grep -v "^Installing"; then
         fnm default lts-latest
         log_success "Node.js LTS installed and set as default"
+        # Verify node is working
+        if eval "$(fnm env --shell bash)" && command -v node &>/dev/null; then
+            local node_version
+            node_version=$(node --version)
+            log_success "Node.js $node_version is now available"
+        fi
     else
         log_warning "Failed to install Node.js LTS"
         log_step "You can install it manually later with: fnm install --lts && fnm default lts-latest"
@@ -1168,7 +1212,11 @@ main() {
 
     # Phase 2: Install Homebrew
     log_section "Installing Homebrew"
-    install_homebrew
+    if ! install_homebrew; then
+        log_warning "Homebrew installation failed or incomplete"
+        log_warning "GUI applications (Docker, Cursor, etc.) will not be installed automatically"
+        log_step "Install Homebrew manually later, then run: darwin-rebuild switch --flake ~/.nix-config#mac --impure"
+    fi
 
     # Phase 3: Generate local configuration
     log_section "Local Configuration"
